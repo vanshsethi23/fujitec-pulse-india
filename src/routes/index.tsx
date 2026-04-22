@@ -14,7 +14,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { generateFleet, summarize, formatInrCompact } from "@/lib/fleet";
+import { summarize, formatInrCompact } from "@/lib/fleet";
+import { useFleetData } from "@/components/fleet/fleet-data-context";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -41,7 +42,15 @@ function spark(seed: number, base: number, drift: number) {
 }
 
 function FleetOverview() {
-  const units = useMemo(() => generateFleet(200, 7), []);
+  return (
+    <AppShell crumb="Fleet Overview">
+      <FleetOverviewBody />
+    </AppShell>
+  );
+}
+
+function FleetOverviewBody() {
+  const { units, source, fileName } = useFleetData();
   const summary = useMemo(() => summarize(units), [units]);
 
   const lastSync = useMemo(() => {
@@ -53,10 +62,10 @@ function FleetOverview() {
       minute: "2-digit",
       hour12: false,
     });
-  }, []);
+  }, [units]);
 
   return (
-    <AppShell crumb="Fleet Overview">
+    <>
       {/* Page header */}
       <div className="flex flex-wrap items-end justify-between gap-3 pb-5">
         <div>
@@ -65,8 +74,11 @@ function FleetOverview() {
           </h1>
           <p className="mt-1 text-[12px] text-muted-foreground">
             Last telemetry sync{" "}
-            <span className="font-mono text-foreground">{lastSync}</span> · 200 units across
-            India region
+            <span className="font-mono text-foreground">{lastSync}</span> · {units.length}{" "}
+            units ·{" "}
+            <span className="font-mono text-foreground">
+              {source === "csv" ? `CSV — ${fileName}` : "Archetype dataset"}
+            </span>
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -98,7 +110,7 @@ function FleetOverview() {
           value={summary.total.toString()}
           sublabel="Connected units"
           delta={1.5}
-          spark={spark(11, 200, 4)}
+          spark={spark(11, summary.total, 4)}
           accent="brand"
           icon={Building2}
         />
@@ -150,6 +162,6 @@ function FleetOverview() {
       </div>
 
       <UnitsTable units={units} />
-    </AppShell>
+    </>
   );
 }

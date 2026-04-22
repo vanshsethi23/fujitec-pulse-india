@@ -196,3 +196,82 @@ export function formatInrCompact(n: number): string {
   if (n >= 1e5) return `₹${(n / 1e5).toFixed(2)} L`;
   return `₹${n.toLocaleString("en-IN")}`;
 }
+
+// ---------- CSV ingestion ----------
+
+// Required headers for the customer-facing telemetry feed.
+export const REQUIRED_CSV_HEADERS = [
+  "Timestamp",
+  "Elevator_ID",
+  "Install_Year",
+  "Motor_Temp_C",
+  "Vibration_RMS",
+  "Current_Draw_A",
+  "Leveling_Accuracy_mm",
+  "Door_Cycles_Hour",
+  "Door_Open_Close_MS",
+  "Bearing_Health_Index",
+  "Target_State",
+] as const;
+
+export type CsvRow = Record<(typeof REQUIRED_CSV_HEADERS)[number], string>;
+
+export interface CsvValidation {
+  ok: boolean;
+  missing: string[];
+  extra: string[];
+}
+
+export function validateCsvHeaders(headers: string[]): CsvValidation {
+  const set = new Set(headers.map((h) => h.trim()));
+  const missing = REQUIRED_CSV_HEADERS.filter((h) => !set.has(h));
+  const extra = headers.filter(
+    (h) => !REQUIRED_CSV_HEADERS.includes(h.trim() as (typeof REQUIRED_CSV_HEADERS)[number]),
+  );
+  return { ok: missing.length === 0, missing, extra };
+}
+
+const num = (v: unknown, fallback = 0): number => {
+  const n = typeof v === "number" ? v : parseFloat(String(v ?? "").trim());
+  return Number.isFinite(n) ? n : fallback;
+};
+
+/**
+ * Aggregate a long-format telemetry CSV into one ScoredUnit per Elevator_ID.
+ * The latest row per elevator (by Timestamp) drives the displayed reading;
+ * Install_Year is taken from the first non-empty value seen.
+ */
+export function csvRowsToUnits(rows: CsvRow[]): ScoredUnit[] {
+  const byId = new Map<string, { latest: CsvRow; ts: number; install: number }>();
+  for (const row of rows) {
+    const id = String(row.Elevator_ID ?? "").trim();
+    if (!id) continue;
+    const ts = Date.parse(row.Timestamp ?? "") || 0;
+    const install = num(row.Install_Year, 0);
+    const cur = byId.get(id);
+    if (!cur || ts >= cur.ts) {
+      byId.set(id, { latest: row, ts, install: install || cur?.install || 0 });
+    } else if (!cur.install && install) {
+      cur.install = install;
+    }
+  }
+
+  const units: ScoredUnit[] = [];
+  for (const [id, { latest, install }] of byId) {
+    const unit: ElevatorUnit = {
+      Unit_ID: id,
+      Site: "Imported Site",
+      City: "—",
+      Install_Year: install || NOW_YEAR - 5,
+      Motor_Temp_C: num(latest.Motor_Temp_C),
+      Vibration_RMS: num(latest.Vibration_RMS),
+      Current_Draw_A: num(latest.Current_Draw_A),
+      Leveling_Accuracy_mm: num(latest.Leveling_Accuracy_mm),
+      Door_Cycles_Hour: num(latest.Door_Cycles_Hour),
+      Door_Open_Close_MS: num(latest.Door_Open_Close_MS),
+      Bearing_Health_Index: num(latest.Bearing_Health_Index, 1),
+    };
+    units.push(scoreUnit(unit));
+  }
+  return units;
+}
