@@ -65,7 +65,7 @@ function FleetOverviewBody() {
   }, [units]);
 
   return (
-    <AppShell crumb="Fleet Overview">
+    <>
       {/* Page header */}
       <div className="flex flex-wrap items-end justify-between gap-3 pb-5">
         <div>
@@ -74,8 +74,11 @@ function FleetOverviewBody() {
           </h1>
           <p className="mt-1 text-[12px] text-muted-foreground">
             Last telemetry sync{" "}
-            <span className="font-mono text-foreground">{lastSync}</span> · 200 units across
-            India region
+            <span className="font-mono text-foreground">{lastSync}</span> · {units.length}{" "}
+            units ·{" "}
+            <span className="font-mono text-foreground">
+              {source === "csv" ? `CSV — ${fileName}` : "Archetype dataset"}
+            </span>
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -107,7 +110,7 @@ function FleetOverviewBody() {
           value={summary.total.toString()}
           sublabel="Connected units"
           delta={1.5}
-          spark={spark(11, 200, 4)}
+          spark={spark(11, summary.total, 4)}
           accent="brand"
           icon={Building2}
         />
@@ -159,6 +162,6 @@ function FleetOverviewBody() {
       </div>
 
       <UnitsTable units={units} />
-    </AppShell>
+    </>
   );
 }
