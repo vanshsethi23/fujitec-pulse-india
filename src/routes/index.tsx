@@ -14,7 +14,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { generateFleet, summarize, formatInrCompact } from "@/lib/fleet";
+import { summarize, formatInrCompact } from "@/lib/fleet";
+import { useFleetData } from "@/components/fleet/fleet-data-context";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -41,7 +42,15 @@ function spark(seed: number, base: number, drift: number) {
 }
 
 function FleetOverview() {
-  const units = useMemo(() => generateFleet(200, 7), []);
+  return (
+    <AppShell crumb="Fleet Overview">
+      <FleetOverviewBody />
+    </AppShell>
+  );
+}
+
+function FleetOverviewBody() {
+  const { units, source, fileName } = useFleetData();
   const summary = useMemo(() => summarize(units), [units]);
 
   const lastSync = useMemo(() => {
@@ -53,7 +62,7 @@ function FleetOverview() {
       minute: "2-digit",
       hour12: false,
     });
-  }, []);
+  }, [units]);
 
   return (
     <AppShell crumb="Fleet Overview">
