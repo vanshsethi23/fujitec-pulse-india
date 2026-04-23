@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { ChevronRight, Search } from "lucide-react";
+import { UnitDetailSheet } from "@/components/fleet/unit-detail-sheet";
 import {
   Table,
   TableBody,
@@ -68,6 +69,7 @@ export function UnitsTable({ units }: { units: ScoredUnit[] }) {
   const [sortDesc, setSortDesc] = useState(true);
   const [pageSize, setPageSize] = useState(25);
   const [page, setPage] = useState(1);
+  const [activeUnitId, setActiveUnitId] = useState<string | null>(null);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -90,6 +92,7 @@ export function UnitsTable({ units }: { units: ScoredUnit[] }) {
   const visible = filtered.slice(start, start + pageSize);
 
   return (
+    <>
     <div className="rounded-md border border-border bg-card">
       {/* Toolbar */}
       <div className="flex flex-wrap items-center gap-3 border-b border-border p-3">
@@ -171,6 +174,7 @@ export function UnitsTable({ units }: { units: ScoredUnit[] }) {
               return (
                 <TableRow
                   key={u.Unit_ID}
+                  onClick={() => setActiveUnitId(u.Unit_ID)}
                   className="group cursor-pointer border-border hover:bg-accent/40"
                 >
                   <TableCell className="font-mono text-[12px] text-foreground">
@@ -279,5 +283,11 @@ export function UnitsTable({ units }: { units: ScoredUnit[] }) {
         </div>
       </div>
     </div>
+    <UnitDetailSheet
+      unitId={activeUnitId}
+      open={activeUnitId !== null}
+      onOpenChange={(o) => !o && setActiveUnitId(null)}
+    />
+    </>
   );
 }
