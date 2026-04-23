@@ -92,6 +92,7 @@ export function UnitsTable({ units }: { units: ScoredUnit[] }) {
   const visible = filtered.slice(start, start + pageSize);
 
   return (
+    <>
     <div className="rounded-md border border-border bg-card">
       {/* Toolbar */}
       <div className="flex flex-wrap items-center gap-3 border-b border-border p-3">
@@ -173,6 +174,7 @@ export function UnitsTable({ units }: { units: ScoredUnit[] }) {
               return (
                 <TableRow
                   key={u.Unit_ID}
+                  onClick={() => setActiveUnitId(u.Unit_ID)}
                   className="group cursor-pointer border-border hover:bg-accent/40"
                 >
                   <TableCell className="font-mono text-[12px] text-foreground">
