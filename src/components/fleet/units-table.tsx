@@ -283,5 +283,11 @@ export function UnitsTable({ units }: { units: ScoredUnit[] }) {
         </div>
       </div>
     </div>
+    <UnitDetailSheet
+      unitId={activeUnitId}
+      open={activeUnitId !== null}
+      onOpenChange={(o) => !o && setActiveUnitId(null)}
+    />
+    </>
   );
 }
