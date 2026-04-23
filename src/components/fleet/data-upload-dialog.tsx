@@ -137,7 +137,7 @@ export function DataUploadDialog({ open, onOpenChange }: DataUploadDialogProps) 
       reject("No valid elevators could be derived from the file.");
       return;
     }
-    setUnits(units, parsed.fileName);
+    setUnits(units, parsed.fileName, parsed.rows);
     toast.success(`Successfully ingested data for ${units.length} elevators.`, {
       description: `${parsed.fileName} · ${parsed.rows.length.toLocaleString()} telemetry rows`,
     });

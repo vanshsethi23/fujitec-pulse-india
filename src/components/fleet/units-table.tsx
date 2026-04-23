@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { ChevronRight, Search } from "lucide-react";
+import { UnitDetailSheet } from "@/components/fleet/unit-detail-sheet";
 import {
   Table,
   TableBody,
@@ -68,6 +69,7 @@ export function UnitsTable({ units }: { units: ScoredUnit[] }) {
   const [sortDesc, setSortDesc] = useState(true);
   const [pageSize, setPageSize] = useState(25);
   const [page, setPage] = useState(1);
+  const [activeUnitId, setActiveUnitId] = useState<string | null>(null);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
