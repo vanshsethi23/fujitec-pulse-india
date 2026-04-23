@@ -22,6 +22,7 @@ import {
   type ScoredUnit,
 } from "@/lib/fleet";
 import { useFleetData } from "@/components/fleet/fleet-data-context";
+import { UnitDetailSheet } from "@/components/fleet/unit-detail-sheet";
 
 export const Route = createFileRoute("/leads")({
   head: () => ({
@@ -94,6 +95,7 @@ function LeadsBody() {
   const { units, source, fileName } = useFleetData();
   const [query, setQuery] = useState("");
   const [sortDesc, setSortDesc] = useState(true);
+  const [activeUnitId, setActiveUnitId] = useState<string | null>(null);
 
   const leads = useMemo(() => units.filter(isModernizationLead), [units]);
 
@@ -245,7 +247,13 @@ function LeadsBody() {
             </TableHeader>
             <TableBody>
               {filteredSorted.map(({ unit, reasons }, idx) => (
-                <LeadRow key={unit.Unit_ID} rank={idx + 1} unit={unit} reasons={reasons} />
+                <LeadRow
+                  key={unit.Unit_ID}
+                  rank={idx + 1}
+                  unit={unit}
+                  reasons={reasons}
+                  onSelect={() => setActiveUnitId(unit.Unit_ID)}
+                />
               ))}
               {filteredSorted.length === 0 && (
                 <TableRow>
@@ -261,6 +269,12 @@ function LeadsBody() {
           </Table>
         </div>
       </div>
+
+      <UnitDetailSheet
+        unitId={activeUnitId}
+        open={activeUnitId !== null}
+        onOpenChange={(o) => !o && setActiveUnitId(null)}
+      />
     </>
   );
 }
@@ -269,13 +283,18 @@ function LeadRow({
   rank,
   unit,
   reasons,
+  onSelect,
 }: {
   rank: number;
   unit: ScoredUnit;
   reasons: string[];
+  onSelect: () => void;
 }) {
   return (
-    <TableRow className="border-border hover:bg-accent/40">
+    <TableRow
+      onClick={onSelect}
+      className="cursor-pointer border-border hover:bg-accent/40"
+    >
       <TableCell>
         <Badge
           variant="outline"
