@@ -65,13 +65,32 @@ export function statusForScore(score: number): UnitStatus {
   return "healthy";
 }
 
+// Sales-pipeline criteria: legacy install OR degraded bearings.
+// Broader than the engineering "critical" gate so reps see the full opportunity.
+export const LEAD_RULES = {
+  installBefore: 2011,
+  bearingBelow: 0.5,
+} as const;
+
 export function isModernizationLead(u: ElevatorUnit): boolean {
-  const age = NOW_YEAR - u.Install_Year;
-  return (
-    age > THRESHOLDS.lead.ageMin &&
-    u.Vibration_RMS > THRESHOLDS.lead.vibrationMin &&
-    u.Bearing_Health_Index < THRESHOLDS.lead.healthMax
-  );
+  return u.Install_Year < LEAD_RULES.installBefore || u.Bearing_Health_Index < LEAD_RULES.bearingBelow;
+}
+
+/**
+ * Human-readable justification for why a unit qualifies as a modernization lead.
+ * Returns the dominant 1–3 reasons in priority order, e.g.
+ *   "High Vibration + 18 Years Old"
+ */
+export function leadReasons(u: ScoredUnit): string[] {
+  const reasons: string[] = [];
+  if (u.Vibration_RMS > 0.15) reasons.push("High Vibration");
+  if (u.Bearing_Health_Index < LEAD_RULES.bearingBelow)
+    reasons.push(`Bearing Health ${u.Bearing_Health_Index.toFixed(2)}`);
+  if (u.Install_Year < LEAD_RULES.installBefore) reasons.push(`${u.age} Years Old`);
+  if (u.Leveling_Accuracy_mm > 4) reasons.push("Leveling Drift");
+  if (u.Current_Draw_A > 22) reasons.push("Current Strain");
+  if (u.Motor_Temp_C > 60) reasons.push("Motor Overheat");
+  return reasons.slice(0, 3);
 }
 
 export function scoreUnit(u: ElevatorUnit): ScoredUnit {

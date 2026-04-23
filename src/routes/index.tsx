@@ -127,7 +127,7 @@ function FleetOverviewBody() {
         <KpiCard
           label="Modernization Leads"
           value={summary.leads.toString()}
-          sublabel="Age > 15y · Vib > 0.1 · Health < 0.4"
+          sublabel="Pre-2011 install or bearing health < 0.5"
           delta={6.8}
           spark={spark(53, summary.leads, 3)}
           accent="warning"
