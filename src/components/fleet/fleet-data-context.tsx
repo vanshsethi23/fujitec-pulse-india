@@ -72,12 +72,35 @@ function synthesizeSeries(unit: ScoredUnit): TelemetryPoint[] {
   return points;
 }
 
+const STORAGE_KEY = "fujitec-pulse:fleet-v1";
+
+interface PersistedState {
+  source: "csv";
+  fileName: string | null;
+  units: ScoredUnit[];
+  rawRows: CsvRow[];
+}
+
+function loadPersisted(): PersistedState | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.localStorage.getItem(STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as PersistedState;
+    if (!parsed?.units?.length) return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
 export function FleetDataProvider({ children }: { children: ReactNode }) {
   const initial = useMemo(() => generateFleet(200, 7), []);
-  const [units, setUnitsState] = useState<ScoredUnit[]>(initial);
-  const [source, setSource] = useState<"mock" | "csv">("mock");
-  const [fileName, setFileName] = useState<string | null>(null);
-  const [rawRows, setRawRows] = useState<CsvRow[]>([]);
+  const persisted = useMemo(() => loadPersisted(), []);
+  const [units, setUnitsState] = useState<ScoredUnit[]>(persisted?.units ?? initial);
+  const [source, setSource] = useState<"mock" | "csv">(persisted ? "csv" : "mock");
+  const [fileName, setFileName] = useState<string | null>(persisted?.fileName ?? null);
+  const [rawRows, setRawRows] = useState<CsvRow[]>(persisted?.rawRows ?? []);
 
   // Memoized series cache — recomputes when raw rows or units change.
   const seriesByUnit = useMemo(() => {
@@ -114,12 +137,32 @@ export function FleetDataProvider({ children }: { children: ReactNode }) {
       setSource("csv");
       setFileName(name);
       setRawRows(rows);
+      try {
+        if (typeof window !== "undefined") {
+          const payload: PersistedState = {
+            source: "csv",
+            fileName: name,
+            units: next,
+            rawRows: rows,
+          };
+          window.localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+        }
+      } catch {
+        // Quota exceeded or serialization error — keep in-memory state regardless.
+      }
     },
     reset: () => {
       setUnitsState(initial);
       setSource("mock");
       setFileName(null);
       setRawRows([]);
+      try {
+        if (typeof window !== "undefined") {
+          window.localStorage.removeItem(STORAGE_KEY);
+        }
+      } catch {
+        // ignore
+      }
     },
     getTimeseries: (unitId: string) => {
       const csvSeries = seriesByUnit.get(unitId);
