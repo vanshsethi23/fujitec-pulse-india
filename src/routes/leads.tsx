@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { ArrowDown, ArrowUp, Download, IndianRupee, Search, Target, TrendingUp } from "lucide-react";
+import { ArrowDown, ArrowUp, Download, IndianRupee, Search, Sparkles, Target, TrendingUp } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import {
   Table,
@@ -23,6 +23,8 @@ import {
 } from "@/lib/fleet";
 import { useFleetData } from "@/components/fleet/fleet-data-context";
 import { UnitDetailSheet } from "@/components/fleet/unit-detail-sheet";
+import { ProposalDialog } from "@/components/fleet/proposal-dialog";
+
 
 export const Route = createFileRoute("/leads")({
   head: () => ({
