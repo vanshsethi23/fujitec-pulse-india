@@ -18,6 +18,8 @@ interface FleetDataValue {
   setUnits: (units: ScoredUnit[], fileName: string, rawRows: CsvRow[]) => void;
   reset: () => void;
   getTimeseries: (unitId: string) => TelemetryPoint[];
+  selectedUnitId: string | null;
+  setSelectedUnitId: (id: string | null) => void;
 }
 
 const FleetDataContext = createContext<FleetDataValue | null>(null);
