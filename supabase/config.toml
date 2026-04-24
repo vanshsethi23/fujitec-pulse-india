@@ -2,3 +2,6 @@ project_id = "lzdadqbhwcinhtrzdotp"
 
 [functions.generate-proposal]
 verify_jwt = false
+
+[functions.inspector-assessment]
+verify_jwt = false

@@ -103,6 +103,7 @@ export function FleetDataProvider({ children }: { children: ReactNode }) {
   const [source, setSource] = useState<"mock" | "csv">(persisted ? "csv" : "mock");
   const [fileName, setFileName] = useState<string | null>(persisted?.fileName ?? null);
   const [rawRows, setRawRows] = useState<CsvRow[]>(persisted?.rawRows ?? []);
+  const [selectedUnitId, setSelectedUnitId] = useState<string | null>(null);
 
   // Memoized series cache — recomputes when raw rows or units change.
   const seriesByUnit = useMemo(() => {
@@ -172,6 +173,8 @@ export function FleetDataProvider({ children }: { children: ReactNode }) {
       const unit = units.find((u) => u.Unit_ID === unitId);
       return unit ? synthesizeSeries(unit) : [];
     },
+    selectedUnitId,
+    setSelectedUnitId,
   };
 
   return <FleetDataContext.Provider value={value}>{children}</FleetDataContext.Provider>;
