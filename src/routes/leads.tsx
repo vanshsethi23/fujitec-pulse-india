@@ -246,6 +246,9 @@ function LeadsBody() {
                   )}
                 </TableHead>
                 <TableHead className="text-[11px] uppercase tracking-[0.1em]">Reason</TableHead>
+                <TableHead className="w-[180px] text-right text-[11px] uppercase tracking-[0.1em]">
+                  Action
+                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -256,12 +259,13 @@ function LeadsBody() {
                   unit={unit}
                   reasons={reasons}
                   onSelect={() => setActiveUnitId(unit.Unit_ID)}
+                  onProposal={() => setProposalUnit(unit)}
                 />
               ))}
               {filteredSorted.length === 0 && (
                 <TableRow>
                   <TableCell
-                    colSpan={9}
+                    colSpan={10}
                     className="py-12 text-center text-sm text-muted-foreground"
                   >
                     No leads match — fleet is in great shape, or refine the search.
@@ -278,6 +282,11 @@ function LeadsBody() {
         open={activeUnitId !== null}
         onOpenChange={(o) => !o && setActiveUnitId(null)}
       />
+      <ProposalDialog
+        unit={proposalUnit}
+        open={proposalUnit !== null}
+        onOpenChange={(o) => !o && setProposalUnit(null)}
+      />
     </>
   );
 }
@@ -287,11 +296,13 @@ function LeadRow({
   unit,
   reasons,
   onSelect,
+  onProposal,
 }: {
   rank: number;
   unit: ScoredUnit;
   reasons: string[];
   onSelect: () => void;
+  onProposal: () => void;
 }) {
   return (
     <TableRow
@@ -327,6 +338,20 @@ function LeadRow({
       </TableCell>
       <TableCell>
         <ReasonChips reasons={reasons} />
+      </TableCell>
+      <TableCell className="text-right">
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={(e) => {
+            e.stopPropagation();
+            onProposal();
+          }}
+          className="h-8 border-primary/30 bg-primary/5 text-[11px] font-medium text-primary hover:bg-primary/10 hover:text-primary"
+        >
+          <Sparkles className="mr-1.5 h-3.5 w-3.5" />
+          Generate Proposal
+        </Button>
       </TableCell>
     </TableRow>
   );
