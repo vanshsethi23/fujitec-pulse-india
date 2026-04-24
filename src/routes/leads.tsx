@@ -262,7 +262,7 @@ function LeadsBody() {
                   rank={idx + 1}
                   unit={unit}
                   reasons={reasons}
-                  onSelect={() => setActiveUnitId(unit.Unit_ID)}
+                  onSelect={() => openInspector(unit.Unit_ID)}
                   onProposal={() => setProposalUnit(unit)}
                 />
               ))}
@@ -281,11 +281,6 @@ function LeadsBody() {
         </div>
       </div>
 
-      <UnitDetailSheet
-        unitId={activeUnitId}
-        open={activeUnitId !== null}
-        onOpenChange={(o) => !o && setActiveUnitId(null)}
-      />
       <ProposalDialog
         unit={proposalUnit}
         open={proposalUnit !== null}
