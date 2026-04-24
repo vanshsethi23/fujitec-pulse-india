@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { ArrowDown, ArrowUp, Download, IndianRupee, Search, Sparkles, Target, TrendingUp } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
@@ -22,7 +22,6 @@ import {
   type ScoredUnit,
 } from "@/lib/fleet";
 import { useFleetData } from "@/components/fleet/fleet-data-context";
-import { UnitDetailSheet } from "@/components/fleet/unit-detail-sheet";
 import { ProposalDialog } from "@/components/fleet/proposal-dialog";
 
 
@@ -94,11 +93,16 @@ function ReasonChips({ reasons }: { reasons: string[] }) {
 }
 
 function LeadsBody() {
-  const { units, source, fileName } = useFleetData();
+  const navigate = useNavigate();
+  const { units, source, fileName, setSelectedUnitId } = useFleetData();
   const [query, setQuery] = useState("");
   const [sortDesc, setSortDesc] = useState(true);
-  const [activeUnitId, setActiveUnitId] = useState<string | null>(null);
   const [proposalUnit, setProposalUnit] = useState<ScoredUnit | null>(null);
+
+  const openInspector = (unitId: string) => {
+    setSelectedUnitId(unitId);
+    void navigate({ to: "/inspector" });
+  };
 
   const leads = useMemo(() => units.filter(isModernizationLead), [units]);
 
