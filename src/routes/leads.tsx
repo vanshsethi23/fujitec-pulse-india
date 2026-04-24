@@ -98,6 +98,7 @@ function LeadsBody() {
   const [query, setQuery] = useState("");
   const [sortDesc, setSortDesc] = useState(true);
   const [activeUnitId, setActiveUnitId] = useState<string | null>(null);
+  const [proposalUnit, setProposalUnit] = useState<ScoredUnit | null>(null);
 
   const leads = useMemo(() => units.filter(isModernizationLead), [units]);
 
