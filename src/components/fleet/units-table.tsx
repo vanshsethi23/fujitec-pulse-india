@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { ChevronRight, Search } from "lucide-react";
-import { UnitDetailSheet } from "@/components/fleet/unit-detail-sheet";
+import { useNavigate } from "@tanstack/react-router";
 import {
   Table,
   TableBody,
@@ -20,6 +20,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { ScoredUnit, UnitStatus } from "@/lib/fleet";
+import { useFleetData } from "@/components/fleet/fleet-data-context";
 
 const STATUS_META: Record<UnitStatus, { label: string; cls: string; dot: string }> = {
   healthy: {
@@ -64,12 +65,18 @@ function ScoreMeter({ score, status }: { score: number; status: UnitStatus }) {
 const FILTERS: ("all" | UnitStatus)[] = ["all", "healthy", "warning", "critical"];
 
 export function UnitsTable({ units }: { units: ScoredUnit[] }) {
+  const navigate = useNavigate();
+  const { setSelectedUnitId } = useFleetData();
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<"all" | UnitStatus>("all");
   const [sortDesc, setSortDesc] = useState(true);
   const [pageSize, setPageSize] = useState(25);
   const [page, setPage] = useState(1);
-  const [activeUnitId, setActiveUnitId] = useState<string | null>(null);
+
+  const openInspector = (unitId: string) => {
+    setSelectedUnitId(unitId);
+    void navigate({ to: "/inspector" });
+  };
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -92,7 +99,6 @@ export function UnitsTable({ units }: { units: ScoredUnit[] }) {
   const visible = filtered.slice(start, start + pageSize);
 
   return (
-    <>
     <div className="rounded-md border border-border bg-card">
       {/* Toolbar */}
       <div className="flex flex-wrap items-center gap-3 border-b border-border p-3">
@@ -174,10 +180,10 @@ export function UnitsTable({ units }: { units: ScoredUnit[] }) {
               return (
                 <TableRow
                   key={u.Unit_ID}
-                  onClick={() => setActiveUnitId(u.Unit_ID)}
+                  onClick={() => openInspector(u.Unit_ID)}
                   className="group cursor-pointer border-border hover:bg-accent/40"
                 >
-                  <TableCell className="font-mono text-[12px] text-foreground">
+                  <TableCell className="font-mono text-[12px] text-brand underline-offset-2 group-hover:underline">
                     {u.Unit_ID}
                   </TableCell>
                   <TableCell>
@@ -283,11 +289,5 @@ export function UnitsTable({ units }: { units: ScoredUnit[] }) {
         </div>
       </div>
     </div>
-    <UnitDetailSheet
-      unitId={activeUnitId}
-      open={activeUnitId !== null}
-      onOpenChange={(o) => !o && setActiveUnitId(null)}
-    />
-    </>
   );
 }
