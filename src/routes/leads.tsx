@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { ArrowDown, ArrowUp, Download, IndianRupee, Search, Target, TrendingUp } from "lucide-react";
+import { ArrowDown, ArrowUp, Download, IndianRupee, Search, Sparkles, Target, TrendingUp } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import {
   Table,
@@ -23,6 +23,8 @@ import {
 } from "@/lib/fleet";
 import { useFleetData } from "@/components/fleet/fleet-data-context";
 import { UnitDetailSheet } from "@/components/fleet/unit-detail-sheet";
+import { ProposalDialog } from "@/components/fleet/proposal-dialog";
+
 
 export const Route = createFileRoute("/leads")({
   head: () => ({
@@ -96,6 +98,7 @@ function LeadsBody() {
   const [query, setQuery] = useState("");
   const [sortDesc, setSortDesc] = useState(true);
   const [activeUnitId, setActiveUnitId] = useState<string | null>(null);
+  const [proposalUnit, setProposalUnit] = useState<ScoredUnit | null>(null);
 
   const leads = useMemo(() => units.filter(isModernizationLead), [units]);
 
@@ -243,6 +246,9 @@ function LeadsBody() {
                   )}
                 </TableHead>
                 <TableHead className="text-[11px] uppercase tracking-[0.1em]">Reason</TableHead>
+                <TableHead className="w-[180px] text-right text-[11px] uppercase tracking-[0.1em]">
+                  Action
+                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -253,12 +259,13 @@ function LeadsBody() {
                   unit={unit}
                   reasons={reasons}
                   onSelect={() => setActiveUnitId(unit.Unit_ID)}
+                  onProposal={() => setProposalUnit(unit)}
                 />
               ))}
               {filteredSorted.length === 0 && (
                 <TableRow>
                   <TableCell
-                    colSpan={9}
+                    colSpan={10}
                     className="py-12 text-center text-sm text-muted-foreground"
                   >
                     No leads match — fleet is in great shape, or refine the search.
@@ -275,6 +282,11 @@ function LeadsBody() {
         open={activeUnitId !== null}
         onOpenChange={(o) => !o && setActiveUnitId(null)}
       />
+      <ProposalDialog
+        unit={proposalUnit}
+        open={proposalUnit !== null}
+        onOpenChange={(o) => !o && setProposalUnit(null)}
+      />
     </>
   );
 }
@@ -284,11 +296,13 @@ function LeadRow({
   unit,
   reasons,
   onSelect,
+  onProposal,
 }: {
   rank: number;
   unit: ScoredUnit;
   reasons: string[];
   onSelect: () => void;
+  onProposal: () => void;
 }) {
   return (
     <TableRow
@@ -324,6 +338,20 @@ function LeadRow({
       </TableCell>
       <TableCell>
         <ReasonChips reasons={reasons} />
+      </TableCell>
+      <TableCell className="text-right">
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={(e) => {
+            e.stopPropagation();
+            onProposal();
+          }}
+          className="h-8 border-primary/30 bg-primary/5 text-[11px] font-medium text-primary hover:bg-primary/10 hover:text-primary"
+        >
+          <Sparkles className="mr-1.5 h-3.5 w-3.5" />
+          Generate Proposal
+        </Button>
       </TableCell>
     </TableRow>
   );
