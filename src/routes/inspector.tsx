@@ -908,7 +908,7 @@ function AiAssessment({
         Current_Draw_A: s.Current_Draw_A,
         Vibration_RMS: s.Vibration_RMS,
         Leveling_Accuracy_mm: s.Leveling_Accuracy_mm,
-        Bearing_Health_Index: s.Bearing_Health_Index,
+        Main_Rope_Condition: s.Main_Rope_Condition,
       }));
 
       const { data: res, error: fnError } = await supabase.functions.invoke(
