@@ -193,8 +193,8 @@ export function UnitDetailSheet({ unitId, open, onOpenChange }: UnitDetailSheetP
                   value={`${unit.Vibration_RMS.toFixed(3)}g`}
                 />
                 <MiniStat
-                  label="Bearing"
-                  value={unit.Bearing_Health_Index.toFixed(2)}
+                  label="Rope %"
+                  value={`${unit.Main_Rope_Condition.toFixed(1)}%`}
                 />
               </div>
             </SheetHeader>
