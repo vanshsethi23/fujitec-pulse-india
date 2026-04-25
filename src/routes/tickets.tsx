@@ -418,6 +418,3 @@ function InlineField({ label, children }: { label: string; children: React.React
     </div>
   );
 }
-
-// Re-export Badge to silence unused import lint warnings if not used directly above.
-export const _badge = Badge;
