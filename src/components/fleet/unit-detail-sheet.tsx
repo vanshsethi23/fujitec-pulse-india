@@ -100,11 +100,17 @@ function generateDiagnostic(unit: ScoredUnit): DiagnosticFinding[] {
     });
   }
 
-  if (unit.Bearing_Health_Index < 0.4) {
+  if (unit.Main_Rope_Condition < 94) {
+    findings.push({
+      severity: "critical",
+      title: "Main rope at replacement threshold",
+      detail: `Main Rope Condition at ${unit.Main_Rope_Condition.toFixed(1)}% is below the 94% industry safety limit. Immediate shutdown and rope replacement required.`,
+    });
+  } else if (unit.Main_Rope_Condition < 96) {
     findings.push({
       severity: "warning",
-      title: "Bearing health degraded",
-      detail: `Bearing Health Index at ${unit.Bearing_Health_Index.toFixed(2)} (below 0.40). Plan bearing replacement within the next maintenance cycle.`,
+      title: "Main rope thinning",
+      detail: `Main Rope Condition at ${unit.Main_Rope_Condition.toFixed(1)}% is in the 94–96% planning zone. Schedule rope replacement before the next inspection cycle.`,
     });
   }
 
@@ -187,8 +193,8 @@ export function UnitDetailSheet({ unitId, open, onOpenChange }: UnitDetailSheetP
                   value={`${unit.Vibration_RMS.toFixed(3)}g`}
                 />
                 <MiniStat
-                  label="Bearing"
-                  value={unit.Bearing_Health_Index.toFixed(2)}
+                  label="Rope %"
+                  value={`${unit.Main_Rope_Condition.toFixed(1)}%`}
                 />
               </div>
             </SheetHeader>

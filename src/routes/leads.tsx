@@ -165,7 +165,7 @@ function LeadsBody() {
           label="Qualified Leads"
           value={leads.length.toString()}
           accent="warning"
-          sub="Pre-2011 install OR bearing health < 0.5"
+          sub="Pre-2011 install OR Main Rope Condition < 96%"
         />
         <SummaryCard
           icon={IndianRupee}
@@ -179,7 +179,7 @@ function LeadsBody() {
           label="Avg Modernization Score"
           value={avgScore.toFixed(2)}
           accent="critical"
-          sub="0.35·Vib + 0.25·LvlErr + 0.20·Cur + 0.20·Age"
+          sub="0.40·RopeRisk + 0.20·Vib + 0.20·LvlErr + 0.10·Cur + 0.10·Age"
         />
       </div>
 
@@ -236,7 +236,7 @@ function LeadsBody() {
                   Vibration
                 </TableHead>
                 <TableHead className="text-[11px] uppercase tracking-[0.1em]">
-                  Bearing
+                  Main Rope Condition (%)
                 </TableHead>
                 <TableHead
                   className="cursor-pointer select-none text-[11px] uppercase tracking-[0.1em] hover:text-foreground"
@@ -330,7 +330,8 @@ function LeadRow({
         <span className="ml-1 text-[10px] text-muted-foreground">g</span>
       </TableCell>
       <TableCell className="font-mono text-[12px] text-foreground">
-        {unit.Bearing_Health_Index.toFixed(2)}
+        {unit.Main_Rope_Condition.toFixed(1)}
+        <span className="ml-1 text-[10px] text-muted-foreground">%</span>
       </TableCell>
       <TableCell>
         <ScoreMeter score={unit.score} />

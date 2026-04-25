@@ -51,7 +51,7 @@ export function ProposalDialog({ unit, open, onOpenChange }: Props) {
                 Vibration_RMS: unit.Vibration_RMS,
                 Current_Draw_A: unit.Current_Draw_A,
                 Leveling_Accuracy_mm: unit.Leveling_Accuracy_mm,
-                Bearing_Health_Index: unit.Bearing_Health_Index,
+                Main_Rope_Condition: unit.Main_Rope_Condition,
                 Door_Cycles_Hour: unit.Door_Cycles_Hour,
                 score: unit.score,
               },
