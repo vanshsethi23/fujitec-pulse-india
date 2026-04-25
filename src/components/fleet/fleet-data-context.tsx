@@ -65,10 +65,10 @@ function synthesizeSeries(unit: ScoredUnit): TelemetryPoint[] {
       Current_Draw_A: +(unit.Current_Draw_A * (1 + drift * 0.8 + wave * 0.6)).toFixed(2),
       Vibration_RMS: +(unit.Vibration_RMS * (1 + drift)).toFixed(4),
       Leveling_Accuracy_mm: +(unit.Leveling_Accuracy_mm * (1 + drift * 0.5)).toFixed(2),
-      Bearing_Health_Index: +Math.max(
-        0,
-        Math.min(1, unit.Bearing_Health_Index + drift * 0.05),
-      ).toFixed(3),
+      Main_Rope_Condition: +Math.max(
+        90,
+        Math.min(100, unit.Main_Rope_Condition + drift * 0.5),
+      ).toFixed(2),
     });
   }
   return points;
