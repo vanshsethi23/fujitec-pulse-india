@@ -8,7 +8,7 @@ export interface TelemetryPoint {
   Current_Draw_A: number;
   Vibration_RMS: number;
   Leveling_Accuracy_mm: number;
-  Bearing_Health_Index: number;
+  Main_Rope_Condition: number;
 }
 
 interface FleetDataValue {
