@@ -201,7 +201,7 @@ export function UnitsTable({ units }: { units: ScoredUnit[] }) {
                     <span className="ml-1 text-[10px] text-muted-foreground">g</span>
                   </TableCell>
                   <TableCell className="font-mono text-[12px] text-foreground">
-                    {u.Main_Rope_Condition.toFixed(1)}
+                    {(u.Main_Rope_Condition ?? 0).toFixed(1)}
                     <span className="ml-1 text-[10px] text-muted-foreground">%</span>
                   </TableCell>
                   <TableCell>

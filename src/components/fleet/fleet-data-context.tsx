@@ -74,7 +74,8 @@ function synthesizeSeries(unit: ScoredUnit): TelemetryPoint[] {
   return points;
 }
 
-const STORAGE_KEY = "fujitec-pulse:fleet-v1";
+// v2: schema renamed Bearing_Health_Index → Main_Rope_Condition.
+const STORAGE_KEY = "fujitec-pulse:fleet-v2";
 
 interface PersistedState {
   source: "csv";
