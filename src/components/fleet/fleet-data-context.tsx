@@ -1,4 +1,4 @@
-import { createContext, useContext, useMemo, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { generateFleet, type CsvRow, type ScoredUnit } from "@/lib/fleet";
 
 export interface TelemetryPoint {
@@ -11,6 +11,30 @@ export interface TelemetryPoint {
   Main_Rope_Condition: number;
 }
 
+export type TicketPriority = "Emergency" | "High" | "Routine";
+export type TicketStatus = "Open" | "In-Progress" | "Resolved";
+
+export interface ServiceTicket {
+  id: string; // e.g. TK-0042
+  unitId: string;
+  site: string;
+  city: string;
+  priority: TicketPriority;
+  status: TicketStatus;
+  assignee: string;
+  summary: string;
+  notes: string;
+  createdAt: number;
+  snapshot: {
+    Motor_Temp_C: number;
+    Vibration_RMS: number;
+    Current_Draw_A: number;
+    Door_Open_Close_MS: number;
+    Main_Rope_Condition: number;
+    Leveling_Accuracy_mm: number;
+  };
+}
+
 interface FleetDataValue {
   units: ScoredUnit[];
   source: "mock" | "csv";
@@ -20,6 +44,10 @@ interface FleetDataValue {
   getTimeseries: (unitId: string) => TelemetryPoint[];
   selectedUnitId: string | null;
   setSelectedUnitId: (id: string | null) => void;
+  tickets: ServiceTicket[];
+  addTicket: (ticket: ServiceTicket) => void;
+  updateTicket: (id: string, patch: Partial<ServiceTicket>) => void;
+  removeTicket: (id: string) => void;
 }
 
 const FleetDataContext = createContext<FleetDataValue | null>(null);
@@ -76,6 +104,19 @@ function synthesizeSeries(unit: ScoredUnit): TelemetryPoint[] {
 
 // v2: schema renamed Bearing_Health_Index → Main_Rope_Condition.
 const STORAGE_KEY = "fujitec-pulse:fleet-v2";
+const TICKETS_KEY = "fujitec-pulse:tickets-v1";
+
+function loadTickets(): ServiceTicket[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = window.localStorage.getItem(TICKETS_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw) as ServiceTicket[];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
 
 interface PersistedState {
   source: "csv";
@@ -105,6 +146,17 @@ export function FleetDataProvider({ children }: { children: ReactNode }) {
   const [fileName, setFileName] = useState<string | null>(persisted?.fileName ?? null);
   const [rawRows, setRawRows] = useState<CsvRow[]>(persisted?.rawRows ?? []);
   const [selectedUnitId, setSelectedUnitId] = useState<string | null>(null);
+  const [tickets, setTickets] = useState<ServiceTicket[]>(() => loadTickets());
+
+  // Persist tickets whenever they change.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      window.localStorage.setItem(TICKETS_KEY, JSON.stringify(tickets));
+    } catch {
+      // ignore quota errors
+    }
+  }, [tickets]);
 
   // Memoized series cache — recomputes when raw rows or units change.
   const seriesByUnit = useMemo(() => {
