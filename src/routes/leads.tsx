@@ -165,7 +165,7 @@ function LeadsBody() {
           label="Qualified Leads"
           value={leads.length.toString()}
           accent="warning"
-          sub="Pre-2011 install OR bearing health < 0.5"
+          sub="Pre-2011 install OR Main Rope Condition < 96%"
         />
         <SummaryCard
           icon={IndianRupee}
