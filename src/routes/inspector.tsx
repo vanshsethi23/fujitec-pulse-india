@@ -807,13 +807,13 @@ function KpiGrid({
         />
         <KpiCard
           icon={CircuitBoard}
-          label="Bearing Health"
-          value={unit.Bearing_Health_Index.toFixed(2)}
-          sub="Bearing_Health_Index (0–1)"
+          label="Main Rope Condition (%)"
+          value={`${unit.Main_Rope_Condition.toFixed(1)}%`}
+          sub="Industry replacement at 94%"
           tone={
-            unit.Bearing_Health_Index < 0.4
+            unit.Main_Rope_Condition < 94
               ? "critical"
-              : unit.Bearing_Health_Index < 0.6
+              : unit.Main_Rope_Condition < 96
                 ? "warn"
                 : "good"
           }
