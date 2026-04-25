@@ -330,7 +330,8 @@ function LeadRow({
         <span className="ml-1 text-[10px] text-muted-foreground">g</span>
       </TableCell>
       <TableCell className="font-mono text-[12px] text-foreground">
-        {unit.Bearing_Health_Index.toFixed(2)}
+        {unit.Main_Rope_Condition.toFixed(1)}
+        <span className="ml-1 text-[10px] text-muted-foreground">%</span>
       </TableCell>
       <TableCell>
         <ScoreMeter score={unit.score} />
