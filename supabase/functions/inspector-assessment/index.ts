@@ -29,7 +29,7 @@ interface Sample {
   Current_Draw_A: number;
   Vibration_RMS: number;
   Leveling_Accuracy_mm: number;
-  Bearing_Health_Index: number;
+  Main_Rope_Condition: number;
 }
 
 interface UnitMeta {
@@ -49,7 +49,7 @@ function summarize(samples: Sample[]) {
     "Current_Draw_A",
     "Vibration_RMS",
     "Leveling_Accuracy_mm",
-    "Bearing_Health_Index",
+    "Main_Rope_Condition",
   ];
   const out: Record<string, { min: number; max: number; mean: number; last: number }> = {};
   for (const k of keys) {
