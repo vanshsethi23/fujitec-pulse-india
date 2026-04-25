@@ -179,7 +179,7 @@ function LeadsBody() {
           label="Avg Modernization Score"
           value={avgScore.toFixed(2)}
           accent="critical"
-          sub="0.35·Vib + 0.25·LvlErr + 0.20·Cur + 0.20·Age"
+          sub="0.40·RopeRisk + 0.20·Vib + 0.20·LvlErr + 0.10·Cur + 0.10·Age"
         />
       </div>
 
