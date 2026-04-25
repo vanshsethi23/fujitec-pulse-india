@@ -165,7 +165,7 @@ export function UnitsTable({ units }: { units: ScoredUnit[] }) {
                 Vibration RMS
               </TableHead>
               <TableHead className="text-[11px] uppercase tracking-[0.1em]">
-                Bearing Health
+                Main Rope Condition (%)
               </TableHead>
               <TableHead className="text-[11px] uppercase tracking-[0.1em]">
                 Modernization Score
