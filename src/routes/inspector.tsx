@@ -19,6 +19,7 @@ import {
   Sparkles,
   Thermometer,
   Waves,
+  Wrench,
 } from "lucide-react";
 import {
   Area,
@@ -56,6 +57,7 @@ import {
   type TelemetryPoint,
 } from "@/components/fleet/fleet-data-context";
 import { supabase } from "@/integrations/supabase/client";
+import { TicketDialog } from "@/components/fleet/ticket-dialog";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/inspector")({
@@ -114,6 +116,7 @@ function InspectorPage() {
 function InspectorBody() {
   const { units, selectedUnitId, setSelectedUnitId, getTimeseries, source } =
     useFleetData();
+  const [ticketOpen, setTicketOpen] = useState(false);
 
   const unit = useMemo(
     () => units.find((u) => u.Unit_ID === selectedUnitId) ?? null,
@@ -146,11 +149,23 @@ function InspectorBody() {
             graphs · AI engineering verdict
           </p>
         </div>
-        <UnitPicker
-          units={units}
-          value={unit?.Unit_ID ?? null}
-          onChange={setSelectedUnitId}
-        />
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={!unit}
+            onClick={() => setTicketOpen(true)}
+            className="h-10 border-warning/40 bg-warning/10 text-warning hover:bg-warning/20 hover:text-warning"
+          >
+            <Wrench className="mr-1.5 h-3.5 w-3.5" />
+            Create Service Ticket
+          </Button>
+          <UnitPicker
+            units={units}
+            value={unit?.Unit_ID ?? null}
+            onChange={setSelectedUnitId}
+          />
+        </div>
       </div>
 
       {!unit ? (
@@ -163,6 +178,8 @@ function InspectorBody() {
           <AiAssessment unit={unit} series={series} />
         </div>
       )}
+
+      <TicketDialog unit={unit} open={ticketOpen} onOpenChange={setTicketOpen} />
     </>
   );
 }
