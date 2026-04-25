@@ -34,7 +34,7 @@ interface UnitPayload {
   Vibration_RMS: number;
   Current_Draw_A: number;
   Leveling_Accuracy_mm: number;
-  Bearing_Health_Index: number;
+  Main_Rope_Condition: number;
   Door_Cycles_Hour: number;
   score: number;
 }
