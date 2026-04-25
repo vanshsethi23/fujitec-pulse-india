@@ -74,7 +74,7 @@ Telemetry snapshot:
 - Leveling_Accuracy_mm: ${unit.Leveling_Accuracy_mm} mm
 - Current_Draw_A: ${unit.Current_Draw_A} A
 - Motor_Temp_C: ${unit.Motor_Temp_C} °C
-- Bearing_Health_Index: ${unit.Bearing_Health_Index} (0–1 scale)
+- Main_Rope_Condition: ${unit.Main_Rope_Condition}% (industry replacement at 94%; planning zone 94–96%)
 - Door_Cycles_Hour: ${unit.Door_Cycles_Hour}
 - Modernization Score: ${unit.score} (0–1 scale)`;
 
