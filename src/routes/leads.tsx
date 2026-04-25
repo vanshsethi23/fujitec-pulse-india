@@ -236,7 +236,7 @@ function LeadsBody() {
                   Vibration
                 </TableHead>
                 <TableHead className="text-[11px] uppercase tracking-[0.1em]">
-                  Bearing
+                  Main Rope Condition (%)
                 </TableHead>
                 <TableHead
                   className="cursor-pointer select-none text-[11px] uppercase tracking-[0.1em] hover:text-foreground"
