@@ -122,7 +122,7 @@ export function FleetDataProvider({ children }: { children: ReactNode }) {
           Current_Draw_A: num(row.Current_Draw_A),
           Vibration_RMS: num(row.Vibration_RMS),
           Leveling_Accuracy_mm: num(row.Leveling_Accuracy_mm),
-          Bearing_Health_Index: num(row.Bearing_Health_Index),
+          Main_Rope_Condition: num(row.Main_Rope_Condition),
         });
         map.set(id, arr);
       }
