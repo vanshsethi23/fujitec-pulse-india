@@ -228,6 +228,11 @@ export function FleetDataProvider({ children }: { children: ReactNode }) {
     },
     selectedUnitId,
     setSelectedUnitId,
+    tickets,
+    addTicket: (ticket) => setTickets((cur) => [ticket, ...cur]),
+    updateTicket: (id, patch) =>
+      setTickets((cur) => cur.map((t) => (t.id === id ? { ...t, ...patch } : t))),
+    removeTicket: (id) => setTickets((cur) => cur.filter((t) => t.id !== id)),
   };
 
   return <FleetDataContext.Provider value={value}>{children}</FleetDataContext.Provider>;
