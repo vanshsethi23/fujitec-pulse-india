@@ -14,7 +14,7 @@ export interface ElevatorUnit {
   Leveling_Accuracy_mm: number;
   Door_Cycles_Hour: number;
   Door_Open_Close_MS: number;
-  Bearing_Health_Index: number; // 0..1, higher is healthier
+  Main_Rope_Condition: number; // 0..100 % — higher is healthier (replacement at 94%)
 }
 
 export interface ScoredUnit extends ElevatorUnit {
@@ -30,62 +30,87 @@ export type UnitStatus = "healthy" | "warning" | "critical";
 export const THRESHOLDS = {
   criticalScore: 0.75,
   warningScore: 0.5,
-  lead: { ageMin: 15, vibrationMin: 0.1, healthMax: 0.4 },
+  // Main rope thickness (% of nominal). Industry: replace at 94%; warn 94–96.
+  rope: { criticalBelow: 94, warningBelow: 96 },
   // Normalization caps used by the score (each term clamped 0..1).
   cap: {
     vibration: 0.25, // RMS g
     levelingMm: 8,
     currentA: 30,
     ageYears: 30,
+    ropeRiskPct: 10, // (100 - condition); cap at 10pts of thinning
   },
   // Indicative INR ticket per modernization (used for revenue opportunity card).
   ticketInr: 2_750_000,
 } as const;
 
-export const NOW_YEAR = new Date().getUTCFullYear();
+// Pinned per business rule: age is computed against 2026.
+export const NOW_YEAR = 2026;
 
 const clamp01 = (n: number) => Math.max(0, Math.min(1, n));
 
 /**
  * Modernization Score (0..1):
- *   S = 0.35·Vib + 0.25·LevelErr + 0.20·CurrentStrain + 0.20·UnitAge
+ *   S = 0.40·RopeRisk + 0.20·Vib + 0.20·LevelErr + 0.10·CurrentStrain + 0.10·UnitAge
  * Each term normalized 0..1 against THRESHOLDS.cap.
+ *   RopeRisk = (100 − Main_Rope_Condition) / cap.ropeRiskPct
  */
 export function modernizationScore(u: ElevatorUnit): number {
+  const ropeRisk = clamp01(Math.max(0, 100 - u.Main_Rope_Condition) / THRESHOLDS.cap.ropeRiskPct);
   const vib = clamp01(u.Vibration_RMS / THRESHOLDS.cap.vibration);
   const lvl = clamp01(Math.abs(u.Leveling_Accuracy_mm) / THRESHOLDS.cap.levelingMm);
   const cur = clamp01(u.Current_Draw_A / THRESHOLDS.cap.currentA);
   const age = clamp01((NOW_YEAR - u.Install_Year) / THRESHOLDS.cap.ageYears);
-  return +(0.35 * vib + 0.25 * lvl + 0.2 * cur + 0.2 * age).toFixed(3);
+  return +(0.4 * ropeRisk + 0.2 * vib + 0.2 * lvl + 0.1 * cur + 0.1 * age).toFixed(3);
 }
 
+/**
+ * Status mapping. Rope condition is a hard safety override:
+ *   < 94%  → CRITICAL  (immediate shutdown territory)
+ *   94–96% → WARNING   (plan for replacement)
+ * Otherwise the modernization score drives the band.
+ */
+export function statusForUnit(u: ElevatorUnit, score: number): UnitStatus {
+  if (u.Main_Rope_Condition < THRESHOLDS.rope.criticalBelow) return "critical";
+  if (u.Main_Rope_Condition < THRESHOLDS.rope.warningBelow) return "warning";
+  if (score >= THRESHOLDS.criticalScore) return "critical";
+  if (score >= THRESHOLDS.warningScore) return "warning";
+  return "healthy";
+}
+
+// Back-compat: a few callers still use score-only mapping.
 export function statusForScore(score: number): UnitStatus {
   if (score >= THRESHOLDS.criticalScore) return "critical";
   if (score >= THRESHOLDS.warningScore) return "warning";
   return "healthy";
 }
 
-// Sales-pipeline criteria: legacy install OR degraded bearings.
-// Broader than the engineering "critical" gate so reps see the full opportunity.
+// Sales-pipeline criteria: legacy install OR rope thinning into replacement zone.
 export const LEAD_RULES = {
   installBefore: 2011,
-  bearingBelow: 0.5,
+  ropeBelow: 96.0,
 } as const;
 
 export function isModernizationLead(u: ElevatorUnit): boolean {
-  return u.Install_Year < LEAD_RULES.installBefore || u.Bearing_Health_Index < LEAD_RULES.bearingBelow;
+  return u.Install_Year < LEAD_RULES.installBefore || u.Main_Rope_Condition < LEAD_RULES.ropeBelow;
 }
 
 /**
  * Human-readable justification for why a unit qualifies as a modernization lead.
- * Returns the dominant 1–3 reasons in priority order, e.g.
- *   "High Vibration + 18 Years Old"
+ * Rope-condition warnings always lead the list because they are a safety hazard.
  */
 export function leadReasons(u: ScoredUnit): string[] {
   const reasons: string[] = [];
+  if (u.Main_Rope_Condition < THRESHOLDS.rope.criticalBelow) {
+    reasons.push(
+      `CRITICAL: Rope Thickness ${u.Main_Rope_Condition.toFixed(1)}% — Immediate Shutdown Recommended`,
+    );
+  } else if (u.Main_Rope_Condition < THRESHOLDS.rope.warningBelow) {
+    reasons.push(
+      `Rope Thickness Warning: ${u.Main_Rope_Condition.toFixed(1)}% (Plan for replacement)`,
+    );
+  }
   if (u.Vibration_RMS > 0.15) reasons.push("High Vibration");
-  if (u.Bearing_Health_Index < LEAD_RULES.bearingBelow)
-    reasons.push(`Bearing Health ${u.Bearing_Health_Index.toFixed(2)}`);
   if (u.Install_Year < LEAD_RULES.installBefore) reasons.push(`${u.age} Years Old`);
   if (u.Leveling_Accuracy_mm > 4) reasons.push("Leveling Drift");
   if (u.Current_Draw_A > 22) reasons.push("Current Strain");
@@ -99,7 +124,7 @@ export function scoreUnit(u: ElevatorUnit): ScoredUnit {
     ...u,
     age: NOW_YEAR - u.Install_Year,
     score,
-    status: statusForScore(score),
+    status: statusForUnit(u, score),
     isLead: isModernizationLead(u),
   };
 }
@@ -149,6 +174,9 @@ export function generateFleet(count = 200, seed = 7): ScoredUnit[] {
     // Older units degrade more on average.
     const wear = Math.min(1, age / 25 + (r() - 0.5) * 0.35);
 
+    // Rope condition: pristine ~99.5%, replacement zone ~93%. Older = thinner.
+    const rope = Math.max(90, 99.5 - wear * 6 - r() * 1.2);
+
     const raw: ElevatorUnit = {
       Unit_ID: `FJT-${String(i).padStart(4, "0")}`,
       Site: site,
@@ -160,7 +188,7 @@ export function generateFleet(count = 200, seed = 7): ScoredUnit[] {
       Leveling_Accuracy_mm: +(0.5 + wear * 6 + r() * 1.5).toFixed(2),
       Door_Cycles_Hour: Math.round(40 + r() * 160),
       Door_Open_Close_MS: Math.round(1800 + wear * 1400 + r() * 300),
-      Bearing_Health_Index: +Math.max(0.05, 1 - wear * 0.85 - r() * 0.1).toFixed(2),
+      Main_Rope_Condition: +rope.toFixed(1),
     };
     units.push(scoreUnit(raw));
   }
@@ -229,7 +257,7 @@ export const REQUIRED_CSV_HEADERS = [
   "Leveling_Accuracy_mm",
   "Door_Cycles_Hour",
   "Door_Open_Close_MS",
-  "Bearing_Health_Index",
+  "Main_Rope_Condition",
   "Target_State",
 ] as const;
 
@@ -288,7 +316,7 @@ export function csvRowsToUnits(rows: CsvRow[]): ScoredUnit[] {
       Leveling_Accuracy_mm: num(latest.Leveling_Accuracy_mm),
       Door_Cycles_Hour: num(latest.Door_Cycles_Hour),
       Door_Open_Close_MS: num(latest.Door_Open_Close_MS),
-      Bearing_Health_Index: num(latest.Bearing_Health_Index, 1),
+      Main_Rope_Condition: num(latest.Main_Rope_Condition, 100),
     };
     units.push(scoreUnit(unit));
   }
