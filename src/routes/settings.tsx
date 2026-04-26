@@ -3,6 +3,7 @@ import { useState } from "react";
 import {
   AlertTriangle,
   Database,
+  IndianRupee,
   LogOut,
   Moon,
   RefreshCw,
@@ -31,11 +32,12 @@ function SettingsPage() {
 }
 
 function SettingsBody() {
-  const { thresholds, setThresholds, reset, theme, toggleTheme } = useFleetData();
+  const { thresholds, setThresholds, averageTicketInr, setAverageTicketInr, reset, theme, toggleTheme } = useFleetData();
   const { logout } = useAuth();
   const navigate = useNavigate();
   const [warn, setWarn] = useState(String(thresholds.ropeWarningBelow));
   const [crit, setCrit] = useState(String(thresholds.ropeCriticalBelow));
+  const [atv, setAtv] = useState(String(averageTicketInr));
 
   const onSaveThresholds = () => {
     const w = parseFloat(warn);
@@ -54,6 +56,16 @@ function SettingsBody() {
     }
     setThresholds({ ropeWarningBelow: w, ropeCriticalBelow: c });
     toast.success("Thresholds saved · fleet rescored");
+  };
+
+  const onSaveCommercial = () => {
+    const next = parseFloat(atv);
+    if (!Number.isFinite(next) || next <= 0) {
+      toast.error("Average ticket size must be a valid positive number.");
+      return;
+    }
+    setAverageTicketInr(Math.round(next));
+    toast.success("Global Revenue Opportunity recalibrated.");
   };
 
   const onReset = () => {
@@ -175,6 +187,48 @@ function SettingsBody() {
               </>
             )}
           </Button>
+        </section>
+
+        {/* Commercial Configurations */}
+        <section className="rounded-md border border-border bg-card p-4 lg:col-span-3">
+          <header className="mb-3 flex items-center gap-2">
+            <span className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-healthy/30 bg-healthy/10 text-healthy">
+              <IndianRupee className="h-3.5 w-3.5" />
+            </span>
+            <div>
+              <h2 className="text-sm font-semibold text-foreground">Commercial Configurations</h2>
+              <p className="text-[11px] text-muted-foreground">
+                Controls revenue opportunity calculations across dashboard, leads and reports.
+              </p>
+            </div>
+          </header>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-[1fr_auto] sm:items-end">
+            <div>
+              <Label
+                htmlFor="atv"
+                className="text-[11px] font-medium uppercase tracking-[0.1em] text-muted-foreground"
+              >
+                Average Modernization Ticket Size (ATV)
+              </Label>
+              <Input
+                id="atv"
+                type="number"
+                min="1"
+                step="1000"
+                value={atv}
+                onChange={(e) => setAtv(e.target.value)}
+                className="mt-1.5 h-9 border-border bg-surface font-mono text-[13px]"
+              />
+              <p className="mt-1 text-[10px] text-muted-foreground">Default ₹14.50 L</p>
+            </div>
+            <Button
+              size="sm"
+              onClick={onSaveCommercial}
+              className="h-9 bg-brand text-[12px] font-medium text-brand-foreground hover:bg-brand/90"
+            >
+              Save Commercial Settings
+            </Button>
+          </div>
         </section>
 
         {/* Data Management */}
