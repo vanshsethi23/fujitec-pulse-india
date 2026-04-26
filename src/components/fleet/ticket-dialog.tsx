@@ -36,15 +36,6 @@ interface Props {
   onOpenChange: (open: boolean) => void;
 }
 
-const ENGINEERS = [
-  "R. Iyer",
-  "P. Krishnan",
-  "S. Banerjee",
-  "M. Deshpande",
-  "A. Reddy",
-  "K. Nair",
-];
-
 const PRIORITY_META: Record<TicketPriority, { cls: string }> = {
   Emergency: { cls: "border-critical/40 bg-critical/15 text-critical" },
   High: { cls: "border-warning/40 bg-warning/15 text-warning" },
@@ -96,7 +87,7 @@ export function TicketDialog({ unit, open, onOpenChange }: Props) {
 
   const [ticketId, setTicketId] = useState("");
   const [priority, setPriority] = useState<TicketPriority>("Routine");
-  const [assignee, setAssignee] = useState(ENGINEERS[0]);
+  const [assignee, setAssignee] = useState("");
   const [summary, setSummary] = useState("");
   const [notes, setNotes] = useState("");
 
@@ -107,13 +98,18 @@ export function TicketDialog({ unit, open, onOpenChange }: Props) {
     if (!open || !unit) return;
     setTicketId(deriveTicketIdFromUnit(unit.Unit_ID));
     setPriority(derivePriority(unit));
-    setAssignee(ENGINEERS[Math.floor(Math.random() * ENGINEERS.length)]);
+    setAssignee("");
     setSummary(`Anomalous reading in ${deriveSensorOfInterest(unit)} detected.`);
     setNotes(buildNotes(unit));
   }, [open, unit]);
 
   const handleSubmit = () => {
     if (!unit) return;
+    const trimmedAssignee = assignee.trim();
+    if (!trimmedAssignee) {
+      toast.error("Please enter the assigned engineer's name.");
+      return;
+    }
     const ticket: ServiceTicket = {
       id: ticketId.trim() || deriveTicketIdFromUnit(unit.Unit_ID),
       unitId: unit.Unit_ID,
@@ -121,7 +117,7 @@ export function TicketDialog({ unit, open, onOpenChange }: Props) {
       city: unit.City,
       priority,
       status: "Open",
-      assignee,
+      assignee: trimmedAssignee,
       summary: summary.trim() || `Anomalous reading in ${sensor} detected.`,
       notes,
       createdAt: Date.now(),
@@ -136,7 +132,7 @@ export function TicketDialog({ unit, open, onOpenChange }: Props) {
     };
     addTicket(ticket);
     toast.success(`Ticket ${ticket.id} issued`, {
-      description: `${unit.Unit_ID} → ${assignee} · ${priority}`,
+      description: `${unit.Unit_ID} → ${trimmedAssignee} · ${priority}`,
     });
     onOpenChange(false);
     navigate({ to: "/tickets" });
@@ -188,19 +184,13 @@ export function TicketDialog({ unit, open, onOpenChange }: Props) {
                   </SelectContent>
                 </Select>
               </Field>
-              <Field label="Assigned Engineer">
-                <Select value={assignee} onValueChange={setAssignee}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {ENGINEERS.map((e) => (
-                      <SelectItem key={e} value={e}>
-                        {e}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+              <Field label="Assigned Engineer *">
+                <Input
+                  value={assignee}
+                  onChange={(e) => setAssignee(e.target.value)}
+                  placeholder="Enter engineer name"
+                  required
+                />
               </Field>
             </div>
 

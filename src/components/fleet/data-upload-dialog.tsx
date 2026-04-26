@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import Papa from "papaparse";
 import {
   AlertCircle,
@@ -51,28 +51,16 @@ interface DataUploadDialogProps {
   onOpenChange: (open: boolean) => void;
 }
 
-type Step = "upload" | "preview";
-
 export function DataUploadDialog({ open, onOpenChange }: DataUploadDialogProps) {
   const { setUnits, reset, source, fileName: activeFile } = useFleetData();
   const [dragActive, setDragActive] = useState(false);
   const [parsing, setParsing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [parsed, setParsed] = useState<ParsedState | null>(null);
-  const [step, setStep] = useState<Step>("upload");
   const [ingesting, setIngesting] = useState(false);
   const [progress, setProgress] = useState(0);
   const [progressPhase, setProgressPhase] = useState<"aggregating" | "scoring">("aggregating");
   const inputRef = useRef<HTMLInputElement>(null);
-
-  // Drive step from parsed state, with a tiny delay so the slide animation runs.
-  useEffect(() => {
-    if (parsed) {
-      const id = requestAnimationFrame(() => setStep("preview"));
-      return () => cancelAnimationFrame(id);
-    }
-    setStep("upload");
-  }, [parsed]);
 
   const reject = (msg: string) => {
     setError(msg);
@@ -165,30 +153,25 @@ export function DataUploadDialog({ open, onOpenChange }: DataUploadDialogProps) 
   };
 
   const goBackToUpload = () => {
-    setStep("upload");
-    // Wait for slide-out before clearing parsed state
-    window.setTimeout(() => {
-      setParsed(null);
-      setError(null);
-    }, 320);
+    setParsed(null);
+    setError(null);
   };
 
   const closeAndClear = (next: boolean) => {
-    if (ingesting) return; // do not allow close while processing
+    if (ingesting) return;
     if (!next) {
       setParsed(null);
       setError(null);
       setDragActive(false);
-      setStep("upload");
     }
     onOpenChange(next);
   };
 
+  const step: "upload" | "preview" = parsed ? "preview" : "upload";
+
   return (
     <Dialog open={open} onOpenChange={closeAndClear}>
-      <DialogContent
-        className="relative w-[calc(100vw-2rem)] max-w-[860px] overflow-hidden border-border bg-card p-0"
-      >
+      <DialogContent className="relative w-[calc(100vw-2rem)] max-w-[860px] border-border bg-card p-0">
         <div className="flex flex-col gap-4 p-6 pb-4">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-foreground">
@@ -206,7 +189,7 @@ export function DataUploadDialog({ open, onOpenChange }: DataUploadDialogProps) 
           <div className="flex items-center gap-2 text-[10px] font-medium uppercase tracking-[0.14em]">
             <span
               className={cn(
-                "flex items-center gap-1.5 transition-colors",
+                "flex items-center gap-1.5",
                 step === "upload" ? "text-brand" : "text-muted-foreground",
               )}
             >
@@ -225,7 +208,7 @@ export function DataUploadDialog({ open, onOpenChange }: DataUploadDialogProps) 
             <span className="h-px w-8 bg-border" />
             <span
               className={cn(
-                "flex items-center gap-1.5 transition-colors",
+                "flex items-center gap-1.5",
                 step === "preview" ? "text-brand" : "text-muted-foreground",
               )}
             >
@@ -244,14 +227,10 @@ export function DataUploadDialog({ open, onOpenChange }: DataUploadDialogProps) 
           </div>
         </div>
 
-        {/* Sliding step viewport */}
-        <div className="relative w-full overflow-hidden px-6">
-          <div
-            className="flex w-[200%] transition-transform duration-[350ms] ease-in-out"
-            style={{ transform: step === "upload" ? "translateX(0%)" : "translateX(-50%)" }}
-          >
-            {/* Step 1 — Upload */}
-            <div className="w-1/2 shrink-0 space-y-3 pr-3">
+        {/* Step content */}
+        <div className="px-6 pb-2">
+          {step === "upload" ? (
+            <div className="space-y-3">
               {/* Active dataset chip */}
               <div className="flex items-center justify-between rounded-md border border-border bg-surface px-3 py-2 text-[11px]">
                 <span className="truncate text-muted-foreground">
@@ -344,62 +323,59 @@ export function DataUploadDialog({ open, onOpenChange }: DataUploadDialogProps) 
                 </div>
               )}
             </div>
-
-            {/* Step 2 — Preview */}
-            <div className="w-1/2 shrink-0 space-y-3 pl-3">
-              {parsed && (
-                <>
-                  <div className="flex items-center justify-between gap-2 rounded-md border border-healthy/30 bg-healthy/10 px-3 py-2 text-[12px] text-healthy">
-                    <div className="flex min-w-0 items-center gap-2">
-                      <CheckCircle2 className="h-4 w-4 shrink-0" />
-                      <span className="truncate">
-                        Schema OK · <span className="font-mono">{parsed.fileName}</span>
-                      </span>
-                    </div>
-                    <span className="shrink-0 font-mono text-[11px]">
-                      {parsed.rows.length.toLocaleString()} rows · {parsed.uniqueElevators} elevators
+          ) : (
+            parsed && (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between gap-2 rounded-md border border-healthy/30 bg-healthy/10 px-3 py-2 text-[12px] text-healthy">
+                  <div className="flex min-w-0 items-center gap-2">
+                    <CheckCircle2 className="h-4 w-4 shrink-0" />
+                    <span className="truncate">
+                      Schema OK · <span className="font-mono">{parsed.fileName}</span>
                     </span>
                   </div>
+                  <span className="shrink-0 font-mono text-[11px]">
+                    {parsed.rows.length.toLocaleString()} rows · {parsed.uniqueElevators} elevators
+                  </span>
+                </div>
 
-                  <div>
-                    <div className="mb-1.5 text-[10px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
-                      First 5 rows preview
-                    </div>
-                    <div className="max-h-[300px] w-full max-w-full overflow-auto rounded-md border border-border">
-                      <Table>
-                        <TableHeader className="sticky top-0 z-10 bg-surface">
-                          <TableRow className="border-border hover:bg-transparent">
+                <div>
+                  <div className="mb-1.5 text-[10px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
+                    First 5 rows preview
+                  </div>
+                  <div className="max-h-[300px] w-full overflow-auto rounded-md border border-border">
+                    <Table>
+                      <TableHeader className="sticky top-0 z-10 bg-surface">
+                        <TableRow className="border-border hover:bg-transparent">
+                          {REQUIRED_CSV_HEADERS.map((h) => (
+                            <TableHead
+                              key={h}
+                              className="whitespace-nowrap bg-surface text-[10px] uppercase tracking-[0.1em]"
+                            >
+                              {h}
+                            </TableHead>
+                          ))}
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {parsed.preview.map((row, i) => (
+                          <TableRow key={i} className="border-border">
                             {REQUIRED_CSV_HEADERS.map((h) => (
-                              <TableHead
+                              <TableCell
                                 key={h}
-                                className="whitespace-nowrap bg-surface text-[10px] uppercase tracking-[0.1em]"
+                                className="whitespace-nowrap py-1.5 font-mono text-[11px] text-foreground"
                               >
-                                {h}
-                              </TableHead>
+                                {String(row[h] ?? "")}
+                              </TableCell>
                             ))}
                           </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {parsed.preview.map((row, i) => (
-                            <TableRow key={i} className="border-border">
-                              {REQUIRED_CSV_HEADERS.map((h) => (
-                                <TableCell
-                                  key={h}
-                                  className="whitespace-nowrap py-1.5 font-mono text-[11px] text-foreground"
-                                >
-                                  {String(row[h] ?? "")}
-                                </TableCell>
-                              ))}
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    </div>
+                        ))}
+                      </TableBody>
+                    </Table>
                   </div>
-                </>
-              )}
-            </div>
-          </div>
+                </div>
+              </div>
+            )
+          )}
         </div>
 
         <DialogFooter className="gap-2 border-t border-border bg-card/50 p-4 sm:gap-2">
@@ -439,7 +415,7 @@ export function DataUploadDialog({ open, onOpenChange }: DataUploadDialogProps) 
         </DialogFooter>
 
         {ingesting && (
-          <div className="absolute inset-0 z-50 flex flex-col items-center justify-center gap-4 bg-card/95 backdrop-blur-sm">
+          <div className="absolute inset-0 z-50 flex flex-col items-center justify-center gap-4 rounded-lg bg-card/95 backdrop-blur-sm">
             <div className="relative flex h-14 w-14 items-center justify-center">
               <span className="absolute inset-0 animate-ping rounded-full bg-brand/30" />
               <Loader2 className="h-7 w-7 animate-spin text-brand" />

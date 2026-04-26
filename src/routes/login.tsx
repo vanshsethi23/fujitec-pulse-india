@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { AlertCircle, ArrowRight, Loader2, Lock, ShieldCheck, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -34,10 +34,12 @@ function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  // If already logged in, bounce home immediately.
-  if (isAuthenticated) {
-    void navigate({ to: search.redirect ?? "/", replace: true });
-  }
+  // If already logged in, bounce home (run after render to avoid setState-in-render warning).
+  useEffect(() => {
+    if (isAuthenticated) {
+      void navigate({ to: search.redirect ?? "/", replace: true });
+    }
+  }, [isAuthenticated, navigate, search.redirect]);
 
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault();

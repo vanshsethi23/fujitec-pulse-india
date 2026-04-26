@@ -57,15 +57,6 @@ export const Route = createFileRoute("/tickets")({
   component: TicketsPage,
 });
 
-const ENGINEERS = [
-  "R. Iyer",
-  "P. Krishnan",
-  "S. Banerjee",
-  "M. Deshpande",
-  "A. Reddy",
-  "K. Nair",
-];
-
 const PRIORITY_META: Record<TicketPriority, { cls: string; dot: string }> = {
   Emergency: {
     cls: "border-critical/40 bg-critical/15 text-critical",
@@ -368,21 +359,12 @@ function TicketCard({ ticket }: { ticket: ServiceTicket }) {
 
       <div className="mt-2">
         <InlineField label="Engineer">
-          <Select
+          <Input
             value={ticket.assignee}
-            onValueChange={(v) => updateTicket(ticket.id, { assignee: v })}
-          >
-            <SelectTrigger className="h-7 bg-surface text-[11px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {ENGINEERS.map((e) => (
-                <SelectItem key={e} value={e} className="text-[11px]">
-                  {e}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+            onChange={(e) => updateTicket(ticket.id, { assignee: e.target.value })}
+            placeholder="Engineer name"
+            className="h-7 bg-surface text-[11px]"
+          />
         </InlineField>
       </div>
 
