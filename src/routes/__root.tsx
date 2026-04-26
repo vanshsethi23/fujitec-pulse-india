@@ -31,18 +31,18 @@ export const Route = createRootRoute({
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Lovable App" },
+      { title: "Fujitec Pulse India" },
       { name: "description", content: "Monitors elevator health via sensor data, generating ranked sales leads for modernization." },
       { name: "author", content: "Lovable" },
-      { property: "og:title", content: "Lovable App" },
+      { property: "og:title", content: "Fujitec Pulse India" },
       { property: "og:description", content: "Monitors elevator health via sensor data, generating ranked sales leads for modernization." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
       { name: "twitter:site", content: "@Lovable" },
-      { name: "twitter:title", content: "Lovable App" },
+      { name: "twitter:title", content: "Fujitec Pulse India" },
       { name: "twitter:description", content: "Monitors elevator health via sensor data, generating ranked sales leads for modernization." },
-      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/d073c5bc-017f-444a-a117-1c9499bdb017/id-preview-58770677--b8eb9870-a5fc-448c-bde4-ac0593911469.lovable.app-1777192173870.png" },
-      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/d073c5bc-017f-444a-a117-1c9499bdb017/id-preview-58770677--b8eb9870-a5fc-448c-bde4-ac0593911469.lovable.app-1777192173870.png" },
+      { property: "og:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/53gP5BPR4zRCF28GcO4NfCMMyGg2/social-images/social-1777222477215-Screenshot_2026-04-26_at_10.24.01_PM.webp" },
+      { name: "twitter:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/53gP5BPR4zRCF28GcO4NfCMMyGg2/social-images/social-1777222477215-Screenshot_2026-04-26_at_10.24.01_PM.webp" },
     ],
     links: [
       {
