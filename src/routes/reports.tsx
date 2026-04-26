@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import {
   Activity,
   AlertTriangle,
@@ -27,7 +27,6 @@ import {
   YAxis,
 } from "recharts";
 import jsPDF from "jspdf";
-import html2canvas from "html2canvas-pro";
 import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
 import { HealthDonut } from "@/components/fleet/health-donut";
@@ -82,7 +81,6 @@ function ageBracket(age: number): "0-5" | "6-15" | "16-25" | "25+" {
 function ReportsBody() {
   const { units, source, fileName } = useFleetData();
   const summary = useMemo(() => summarize(units), [units]);
-  const reportRef = useRef<HTMLDivElement>(null);
   const [exportingPdf, setExportingPdf] = useState(false);
 
   const leads = useMemo(() => units.filter(isModernizationLead), [units]);
@@ -181,69 +179,21 @@ function ReportsBody() {
   };
 
   const handleExportPdf = async () => {
-    const node = reportRef.current;
-    if (!node) return;
     setExportingPdf(true);
     try {
-      // Defer one tick so the spinner state paints.
       await new Promise((r) => requestAnimationFrame(() => r(null)));
-
-      const canvas = await html2canvas(node, {
-        backgroundColor: "#0B1220",
-        scale: 2,
-        logging: false,
-        useCORS: true,
+      buildExecutivePdf({
+        total: summary.total,
+        healthy: summary.healthy,
+        warning: summary.warning,
+        critical: summary.critical,
+        leadsCount: leads.length,
+        revenueInr,
+        safetyCount: safetyHazards.length,
+        readiness: readinessData,
+        top10,
+        sourceLabel: source === "csv" ? `CSV — ${fileName}` : "Archetype dataset",
       });
-
-      const imgData = canvas.toDataURL("image/jpeg", 0.92);
-      const pdf = new jsPDF({ unit: "pt", format: "a4", orientation: "p" });
-      const pageW = pdf.internal.pageSize.getWidth();
-      const pageH = pdf.internal.pageSize.getHeight();
-      const margin = 32;
-      const usableW = pageW - margin * 2;
-      const ratio = canvas.height / canvas.width;
-      const imgH = usableW * ratio;
-
-      // Slice tall image across pages.
-      let remainingH = imgH;
-      let offsetY = 0;
-      const sliceCanvas = document.createElement("canvas");
-      const ctx = sliceCanvas.getContext("2d");
-      if (!ctx) throw new Error("Canvas 2D unavailable");
-
-      const pxPerPdfPt = canvas.width / usableW;
-      const pageContentH = pageH - margin * 2;
-      const pageContentPx = pageContentH * pxPerPdfPt;
-
-      while (remainingH > 0) {
-        const sliceH = Math.min(pageContentPx, canvas.height - offsetY);
-        sliceCanvas.width = canvas.width;
-        sliceCanvas.height = sliceH;
-        ctx.fillStyle = "#0B1220";
-        ctx.fillRect(0, 0, sliceCanvas.width, sliceCanvas.height);
-        ctx.drawImage(
-          canvas,
-          0,
-          offsetY,
-          canvas.width,
-          sliceH,
-          0,
-          0,
-          canvas.width,
-          sliceH,
-        );
-        const slice = sliceCanvas.toDataURL("image/jpeg", 0.9);
-        const sliceHpt = sliceH / pxPerPdfPt;
-        if (offsetY > 0) pdf.addPage();
-        pdf.addImage(slice, "JPEG", margin, margin, usableW, sliceHpt);
-        offsetY += sliceH;
-        remainingH -= sliceHpt;
-      }
-
-      // Suppress the imported icon variable lint complaint by referencing it.
-      void imgData;
-
-      pdf.save(`Fujitec-Executive-Summary-${new Date().toISOString().slice(0, 10)}.pdf`);
       toast.success("Executive summary PDF generated");
     } catch (err) {
       console.error(err);
@@ -296,7 +246,7 @@ function ReportsBody() {
       </div>
 
       {/* The captured region */}
-      <div ref={reportRef} className="space-y-5 bg-background pb-2">
+      <div className="space-y-5 bg-background pb-2">
         {/* Branded report header (visible in PDF) */}
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-border bg-card p-4">
           <div className="flex items-center gap-3">
@@ -672,4 +622,303 @@ function StatusPill({ status }: { status: ScoredUnit["status"] }) {
       {label}
     </span>
   );
+}
+
+/* ---------- Native jsPDF Executive Summary ---------- */
+
+interface PdfData {
+  total: number;
+  healthy: number;
+  warning: number;
+  critical: number;
+  leadsCount: number;
+  revenueInr: number;
+  safetyCount: number;
+  readiness: { bracket: string; count: number; key: string }[];
+  top10: ScoredUnit[];
+  sourceLabel: string;
+}
+
+function buildExecutivePdf(d: PdfData): void {
+  const pdf = new jsPDF({ unit: "pt", format: "a4", orientation: "p" });
+  const pageW = pdf.internal.pageSize.getWidth();
+  const pageH = pdf.internal.pageSize.getHeight();
+  const margin = 40;
+
+  // Brand palette (hex equivalents of the dark theme tokens).
+  const C = {
+    bg: [11, 18, 32] as const,
+    text: [240, 244, 250] as const,
+    muted: [148, 163, 184] as const,
+    brand: [30, 99, 214] as const,
+    healthy: [16, 185, 129] as const,
+    warning: [245, 158, 11] as const,
+    critical: [239, 68, 68] as const,
+    cardBorder: [40, 50, 70] as const,
+  };
+
+  const fillBg = () => {
+    pdf.setFillColor(C.bg[0], C.bg[1], C.bg[2]);
+    pdf.rect(0, 0, pageW, pageH, "F");
+  };
+  fillBg();
+
+  // Header bar
+  pdf.setFillColor(C.brand[0], C.brand[1], C.brand[2]);
+  pdf.rect(0, 0, pageW, 6, "F");
+
+  // Title block
+  pdf.setTextColor(C.muted[0], C.muted[1], C.muted[2]);
+  pdf.setFontSize(9);
+  pdf.setFont("helvetica", "normal");
+  pdf.text("FUJITEC PULSE  ·  IIoT INTELLIGENCE", margin, margin + 4);
+
+  pdf.setTextColor(C.text[0], C.text[1], C.text[2]);
+  pdf.setFontSize(22);
+  pdf.setFont("helvetica", "bold");
+  pdf.text("Executive Fleet Summary", margin, margin + 28);
+
+  pdf.setTextColor(C.muted[0], C.muted[1], C.muted[2]);
+  pdf.setFontSize(10);
+  pdf.setFont("helvetica", "normal");
+  const today = new Date().toLocaleDateString("en-IN", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
+  pdf.text(
+    `${today}  ·  ${d.total} units monitored  ·  ${d.sourceLabel}`,
+    margin,
+    margin + 44,
+  );
+
+  // ---- Three KPI cards ----
+  const cardTop = margin + 64;
+  const cardH = 110;
+  const gap = 10;
+  const cardW = (pageW - margin * 2 - gap * 2) / 3;
+
+  const drawCard = (
+    x: number,
+    y: number,
+    w: number,
+    h: number,
+    title: string,
+    value: string,
+    valueColor: readonly [number, number, number],
+    sub: string,
+  ) => {
+    pdf.setDrawColor(C.cardBorder[0], C.cardBorder[1], C.cardBorder[2]);
+    pdf.setFillColor(17, 24, 39);
+    pdf.roundedRect(x, y, w, h, 6, 6, "FD");
+
+    pdf.setTextColor(C.muted[0], C.muted[1], C.muted[2]);
+    pdf.setFontSize(8);
+    pdf.setFont("helvetica", "bold");
+    pdf.text(title.toUpperCase(), x + 14, y + 20);
+
+    pdf.setTextColor(valueColor[0], valueColor[1], valueColor[2]);
+    pdf.setFontSize(28);
+    pdf.setFont("helvetica", "bold");
+    pdf.text(value, x + 14, y + 56);
+
+    pdf.setTextColor(C.muted[0], C.muted[1], C.muted[2]);
+    pdf.setFontSize(9);
+    pdf.setFont("helvetica", "normal");
+    const lines = pdf.splitTextToSize(sub, w - 28);
+    pdf.text(lines, x + 14, y + 78);
+  };
+
+  drawCard(
+    margin,
+    cardTop,
+    cardW,
+    cardH,
+    "Fleet Risk Profile",
+    String(d.total),
+    C.text,
+    `Normal ${d.healthy}  ·  Warning ${d.warning}  ·  Critical ${d.critical}`,
+  );
+  drawCard(
+    margin + cardW + gap,
+    cardTop,
+    cardW,
+    cardH,
+    "Modernization Pipeline",
+    String(d.leadsCount),
+    C.warning,
+    `Revenue Opportunity ${formatInrCompact(d.revenueInr)}\n${d.leadsCount} qualified leads`,
+  );
+  drawCard(
+    margin + (cardW + gap) * 2,
+    cardTop,
+    cardW,
+    cardH,
+    "Safety Compliance",
+    String(d.safetyCount),
+    C.critical,
+    `Units with Rope < 96%\nIndustry threshold: 94%`,
+  );
+
+  // ---- Risk distribution stacked bar ----
+  const barY = cardTop + cardH + 24;
+  pdf.setTextColor(C.text[0], C.text[1], C.text[2]);
+  pdf.setFontSize(11);
+  pdf.setFont("helvetica", "bold");
+  pdf.text("Fleet Health Distribution", margin, barY);
+
+  const totalSafe = Math.max(1, d.total);
+  const fullW = pageW - margin * 2;
+  const segH = 14;
+  const segY = barY + 10;
+  const wH = (d.healthy / totalSafe) * fullW;
+  const wW = (d.warning / totalSafe) * fullW;
+  const wC = (d.critical / totalSafe) * fullW;
+
+  pdf.setFillColor(C.healthy[0], C.healthy[1], C.healthy[2]);
+  pdf.rect(margin, segY, wH, segH, "F");
+  pdf.setFillColor(C.warning[0], C.warning[1], C.warning[2]);
+  pdf.rect(margin + wH, segY, wW, segH, "F");
+  pdf.setFillColor(C.critical[0], C.critical[1], C.critical[2]);
+  pdf.rect(margin + wH + wW, segY, wC, segH, "F");
+
+  pdf.setFontSize(9);
+  pdf.setFont("helvetica", "normal");
+  pdf.setTextColor(C.muted[0], C.muted[1], C.muted[2]);
+  const pct = (n: number) => Math.round((n / totalSafe) * 100);
+  pdf.text(
+    `Healthy ${d.healthy} (${pct(d.healthy)}%)   Warning ${d.warning} (${pct(d.warning)}%)   Critical ${d.critical} (${pct(d.critical)}%)`,
+    margin,
+    segY + segH + 14,
+  );
+
+  // ---- Readiness by age ----
+  const readinessY = segY + segH + 36;
+  pdf.setTextColor(C.text[0], C.text[1], C.text[2]);
+  pdf.setFontSize(11);
+  pdf.setFont("helvetica", "bold");
+  pdf.text("Modernization Readiness — by age bracket", margin, readinessY);
+
+  const chartY = readinessY + 10;
+  const chartH = 110;
+  const cellW = (pageW - margin * 2) / d.readiness.length;
+  const maxCount = Math.max(1, ...d.readiness.map((r) => r.count));
+  const colorByKey = (k: string): readonly [number, number, number] => {
+    if (k === "25+") return C.critical;
+    if (k === "16-25") return C.warning;
+    if (k === "6-15") return C.brand;
+    return C.healthy;
+  };
+  for (let i = 0; i < d.readiness.length; i++) {
+    const r = d.readiness[i];
+    const h = (r.count / maxCount) * (chartH - 24);
+    const x = margin + i * cellW + 12;
+    const y = chartY + (chartH - h - 16);
+    const col = colorByKey(r.key);
+    pdf.setFillColor(col[0], col[1], col[2]);
+    pdf.rect(x, y, cellW - 24, h, "F");
+    pdf.setTextColor(C.text[0], C.text[1], C.text[2]);
+    pdf.setFontSize(10);
+    pdf.setFont("helvetica", "bold");
+    pdf.text(String(r.count), x + (cellW - 24) / 2, y - 4, { align: "center" });
+    pdf.setTextColor(C.muted[0], C.muted[1], C.muted[2]);
+    pdf.setFontSize(9);
+    pdf.setFont("helvetica", "normal");
+    pdf.text(r.bracket, x + (cellW - 24) / 2, chartY + chartH, { align: "center" });
+  }
+
+  // ---- Page 2: Top 10 leads ----
+  pdf.addPage();
+  fillBg();
+  pdf.setFillColor(C.brand[0], C.brand[1], C.brand[2]);
+  pdf.rect(0, 0, pageW, 6, "F");
+
+  pdf.setTextColor(C.text[0], C.text[1], C.text[2]);
+  pdf.setFontSize(16);
+  pdf.setFont("helvetica", "bold");
+  pdf.text("Top 10 Modernization Leads", margin, margin + 18);
+
+  pdf.setTextColor(C.muted[0], C.muted[1], C.muted[2]);
+  pdf.setFontSize(9);
+  pdf.setFont("helvetica", "normal");
+  pdf.text("Ranked by Modernization Score", margin, margin + 32);
+
+  const tableTop = margin + 50;
+  const cols = [
+    { label: "#", w: 22 },
+    { label: "Unit ID", w: 70 },
+    { label: "Site / City", w: 150 },
+    { label: "Install", w: 50 },
+    { label: "Rope %", w: 50 },
+    { label: "Vib (g)", w: 55 },
+    { label: "Score", w: 50 },
+    { label: "Status", w: 60 },
+  ];
+  let cx = margin;
+  pdf.setFillColor(22, 30, 46);
+  pdf.rect(margin, tableTop, pageW - margin * 2, 22, "F");
+  pdf.setTextColor(C.muted[0], C.muted[1], C.muted[2]);
+  pdf.setFontSize(8);
+  pdf.setFont("helvetica", "bold");
+  for (const c of cols) {
+    pdf.text(c.label.toUpperCase(), cx + 6, tableTop + 14);
+    cx += c.w;
+  }
+
+  let ry = tableTop + 22;
+  pdf.setFont("helvetica", "normal");
+  pdf.setFontSize(9);
+  d.top10.forEach((u, i) => {
+    if (i % 2 === 0) {
+      pdf.setFillColor(15, 22, 36);
+      pdf.rect(margin, ry, pageW - margin * 2, 22, "F");
+    }
+    let x = margin;
+    const cells = [
+      String(i + 1),
+      u.Unit_ID,
+      `${u.Site} · ${u.City}`,
+      String(u.Install_Year),
+      `${u.Main_Rope_Condition.toFixed(1)}%`,
+      u.Vibration_RMS.toFixed(3),
+      u.score.toFixed(2),
+      u.status === "critical"
+        ? "CRITICAL"
+        : u.status === "warning"
+          ? "WARNING"
+          : "NORMAL",
+    ];
+    cells.forEach((val, idx) => {
+      const c = cols[idx];
+      if (idx === 7) {
+        const col =
+          u.status === "critical"
+            ? C.critical
+            : u.status === "warning"
+              ? C.warning
+              : C.healthy;
+        pdf.setTextColor(col[0], col[1], col[2]);
+        pdf.setFont("helvetica", "bold");
+      } else {
+        pdf.setTextColor(C.text[0], C.text[1], C.text[2]);
+        pdf.setFont("helvetica", "normal");
+      }
+      const truncated = pdf.splitTextToSize(val, c.w - 8)[0] ?? val;
+      pdf.text(truncated, x + 6, ry + 14);
+      x += c.w;
+    });
+    ry += 22;
+  });
+
+  // Footer
+  pdf.setTextColor(C.muted[0], C.muted[1], C.muted[2]);
+  pdf.setFontSize(8);
+  pdf.setFont("helvetica", "normal");
+  pdf.text(
+    `Confidential · Fujitec Pulse · Generated ${new Date().toLocaleString("en-IN", { hour12: false })}`,
+    margin,
+    pageH - 24,
+  );
+
+  pdf.save(`Fujitec-Executive-Summary-${new Date().toISOString().slice(0, 10)}.pdf`);
 }

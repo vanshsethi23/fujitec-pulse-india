@@ -1,8 +1,7 @@
 import { useState } from "react";
-import { Bell, Database, LogOut, Search, ChevronRight } from "lucide-react";
+import { Database, LogOut, ChevronRight } from "lucide-react";
 import { useNavigate } from "@tanstack/react-router";
 import { SidebarTrigger } from "@/components/ui/sidebar";
-import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
@@ -46,14 +45,6 @@ export function TopBar({ crumb }: { crumb: string }) {
       </nav>
 
       <div className="ml-auto flex items-center gap-3">
-        <div className="relative hidden md:block">
-          <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            placeholder="Search units, sites, tickets…"
-            className="h-9 w-[260px] border-border bg-surface pl-8 text-[13px]"
-          />
-        </div>
-
         <Button
           onClick={() => setUploadOpen(true)}
           size="sm"
@@ -73,14 +64,6 @@ export function TopBar({ crumb }: { crumb: string }) {
           />
           {source === "csv" ? `CSV · ${units.length} units` : "PROD · India Region"}
         </span>
-
-        <button
-          aria-label="Notifications"
-          className="relative inline-flex h-9 w-9 items-center justify-center rounded-md border border-border bg-surface text-muted-foreground transition-colors hover:text-foreground"
-        >
-          <Bell className="h-4 w-4" />
-          <span className="absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-warning" />
-        </button>
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>

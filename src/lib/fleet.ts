@@ -27,6 +27,7 @@ export interface ScoredUnit extends ElevatorUnit {
 export type UnitStatus = "healthy" | "warning" | "critical";
 
 // Centralized thresholds — tune once when real data lands.
+// `rope` values are mutable so the Settings page can override them at runtime.
 export const THRESHOLDS = {
   criticalScore: 0.75,
   warningScore: 0.5,
@@ -42,7 +43,19 @@ export const THRESHOLDS = {
   },
   // Indicative INR ticket per modernization (used for revenue opportunity card).
   ticketInr: 2_750_000,
-} as const;
+};
+
+export interface ThresholdOverrides {
+  ropeWarningBelow: number;
+  ropeCriticalBelow: number;
+}
+
+/** Mutate the global rope thresholds. Subsequent scoreUnit/statusForUnit
+ *  calls will reflect the new values. */
+export function setThresholdOverrides(o: ThresholdOverrides): void {
+  THRESHOLDS.rope.warningBelow = o.ropeWarningBelow;
+  THRESHOLDS.rope.criticalBelow = o.ropeCriticalBelow;
+}
 
 // Pinned per business rule: age is computed against 2026.
 export const NOW_YEAR = 2026;

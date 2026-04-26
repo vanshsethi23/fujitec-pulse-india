@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { ArrowDown, ArrowUp, Download, IndianRupee, Search, Sparkles, Target, TrendingUp } from "lucide-react";
+import { ArrowDown, ArrowUp, IndianRupee, Search, Sparkles, Target, TrendingUp } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import {
   Table,
@@ -148,14 +148,6 @@ function LeadsBody() {
             </span>
           </p>
         </div>
-        <Button
-          variant="outline"
-          size="sm"
-          className="h-9 border-border bg-surface text-[12px] text-foreground"
-        >
-          <Download className="mr-1.5 h-3.5 w-3.5" />
-          Export pipeline
-        </Button>
       </div>
 
       {/* KPI strip */}
