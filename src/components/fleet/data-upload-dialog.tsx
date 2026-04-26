@@ -60,6 +60,9 @@ export function DataUploadDialog({ open, onOpenChange }: DataUploadDialogProps) 
   const [error, setError] = useState<string | null>(null);
   const [parsed, setParsed] = useState<ParsedState | null>(null);
   const [step, setStep] = useState<Step>("upload");
+  const [ingesting, setIngesting] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [progressPhase, setProgressPhase] = useState<"aggregating" | "scoring">("aggregating");
   const inputRef = useRef<HTMLInputElement>(null);
 
   // Drive step from parsed state, with a tiny delay so the slide animation runs.
@@ -132,20 +135,33 @@ export function DataUploadDialog({ open, onOpenChange }: DataUploadDialogProps) 
     if (file) handleFile(file);
   };
 
-  const onConfirm = () => {
-    if (!parsed) return;
-    const units = csvRowsToUnits(parsed.rows);
-    if (units.length === 0) {
-      reject("No valid elevators could be derived from the file.");
-      return;
+  const onConfirm = async () => {
+    if (!parsed || ingesting) return;
+    setIngesting(true);
+    setProgress(0);
+    setProgressPhase("aggregating");
+    try {
+      const units = await csvRowsToUnitsAsync(parsed.rows, (pct, phase) => {
+        setProgress(pct);
+        setProgressPhase(phase);
+      });
+      if (units.length === 0) {
+        setIngesting(false);
+        reject("No valid elevators could be derived from the file.");
+        return;
+      }
+      setUnits(units, parsed.fileName, parsed.rows);
+      toast.success(`Successfully ingested data for ${units.length} elevators.`, {
+        description: `${parsed.fileName} · ${parsed.rows.length.toLocaleString()} telemetry rows`,
+      });
+      setIngesting(false);
+      setParsed(null);
+      setError(null);
+      onOpenChange(false);
+    } catch (e) {
+      setIngesting(false);
+      reject(e instanceof Error ? e.message : "Ingestion failed");
     }
-    setUnits(units, parsed.fileName, parsed.rows);
-    toast.success(`Successfully ingested data for ${units.length} elevators.`, {
-      description: `${parsed.fileName} · ${parsed.rows.length.toLocaleString()} telemetry rows`,
-    });
-    setParsed(null);
-    setError(null);
-    onOpenChange(false);
   };
 
   const goBackToUpload = () => {
