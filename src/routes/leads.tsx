@@ -241,6 +241,9 @@ function LeadsBody() {
                   )}
                 </TableHead>
                 <TableHead className="text-[11px] uppercase tracking-[0.1em]">Reason</TableHead>
+                <TableHead className="text-right text-[11px] uppercase tracking-[0.1em]">
+                  Est. Revenue
+                </TableHead>
                 <TableHead className="w-[180px] text-right text-[11px] uppercase tracking-[0.1em]">
                   Action
                 </TableHead>
@@ -253,6 +256,7 @@ function LeadsBody() {
                   rank={idx + 1}
                   unit={unit}
                   reasons={reasons}
+                  averageTicketInr={averageTicketInr}
                   onSelect={() => openInspector(unit.Unit_ID)}
                   onProposal={() => setProposalUnit(unit)}
                 />
@@ -260,7 +264,7 @@ function LeadsBody() {
               {filteredSorted.length === 0 && (
                 <TableRow>
                   <TableCell
-                    colSpan={10}
+                    colSpan={11}
                     className="py-12 text-center text-sm text-muted-foreground"
                   >
                     No leads match — fleet is in great shape, or refine the search.
@@ -285,12 +289,14 @@ function LeadRow({
   rank,
   unit,
   reasons,
+  averageTicketInr,
   onSelect,
   onProposal,
 }: {
   rank: number;
   unit: ScoredUnit;
   reasons: string[];
+  averageTicketInr: number;
   onSelect: () => void;
   onProposal: () => void;
 }) {
@@ -329,6 +335,9 @@ function LeadRow({
       </TableCell>
       <TableCell>
         <ReasonChips reasons={reasons} />
+      </TableCell>
+      <TableCell className="text-right font-mono text-[12px] text-foreground">
+        {formatInrCompact(averageTicketInr)}
       </TableCell>
       <TableCell className="text-right">
         <Button
