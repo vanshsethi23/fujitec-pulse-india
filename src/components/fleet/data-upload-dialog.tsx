@@ -408,6 +408,7 @@ export function DataUploadDialog({ open, onOpenChange }: DataUploadDialogProps) 
               <Button
                 variant="outline"
                 onClick={goBackToUpload}
+                disabled={ingesting}
                 className="border-border bg-surface text-foreground"
               >
                 <ArrowLeft className="mr-1.5 h-3.5 w-3.5" />
@@ -415,10 +416,15 @@ export function DataUploadDialog({ open, onOpenChange }: DataUploadDialogProps) 
               </Button>
               <Button
                 onClick={onConfirm}
+                disabled={ingesting}
                 className="bg-brand text-brand-foreground hover:bg-brand/90"
               >
-                <CheckCircle2 className="mr-1.5 h-3.5 w-3.5" />
-                Confirm Ingestion
+                {ingesting ? (
+                  <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <CheckCircle2 className="mr-1.5 h-3.5 w-3.5" />
+                )}
+                {ingesting ? "Processing…" : "Confirm Ingestion"}
               </Button>
             </>
           ) : (
@@ -431,6 +437,32 @@ export function DataUploadDialog({ open, onOpenChange }: DataUploadDialogProps) 
             </Button>
           )}
         </DialogFooter>
+
+        {ingesting && (
+          <div className="absolute inset-0 z-50 flex flex-col items-center justify-center gap-4 bg-card/95 backdrop-blur-sm">
+            <div className="relative flex h-14 w-14 items-center justify-center">
+              <span className="absolute inset-0 animate-ping rounded-full bg-brand/30" />
+              <Loader2 className="h-7 w-7 animate-spin text-brand" />
+            </div>
+            <div className="text-center">
+              <div className="text-[14px] font-semibold text-foreground">
+                Processing Data…
+              </div>
+              <div className="mt-1 text-[11px] text-muted-foreground">
+                {progressPhase === "aggregating"
+                  ? "Aggregating telemetry rows per Elevator_ID"
+                  : "Scoring units and resolving statuses"}
+              </div>
+            </div>
+            <div className="w-[280px]">
+              <Progress value={progress} className="h-1.5" />
+              <div className="mt-1.5 flex items-center justify-between text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
+                <span>{progressPhase}</span>
+                <span className="font-mono">{progress}%</span>
+              </div>
+            </div>
+          </div>
+        )}
       </DialogContent>
     </Dialog>
   );
