@@ -7,13 +7,6 @@ import { HealthDonut } from "@/components/fleet/health-donut";
 import { ScoreHistogram } from "@/components/fleet/score-histogram";
 import { UnitsTable } from "@/components/fleet/units-table";
 import { Button } from "@/components/ui/button";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { summarize, formatInrCompact } from "@/lib/fleet";
 import { useFleetData } from "@/components/fleet/fleet-data-context";
 
@@ -82,16 +75,6 @@ function FleetOverviewBody() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Select defaultValue="7d">
-            <SelectTrigger className="h-9 w-[110px] border-border bg-surface text-[12px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="24h">Last 24h</SelectItem>
-              <SelectItem value="7d">Last 7 days</SelectItem>
-              <SelectItem value="30d">Last 30 days</SelectItem>
-            </SelectContent>
-          </Select>
           <Button
             asChild
             size="sm"
