@@ -21,6 +21,7 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar";
+import fujitecLogo from "@/assets/fujitec-logo.png";
 
 const items = [
   { title: "Fleet Overview", url: "/", icon: LayoutDashboard },
@@ -44,9 +45,14 @@ export function AppSidebar() {
           to="/"
           className="flex items-center gap-2.5 px-2 py-2 group-data-[collapsible=icon]:justify-center"
         >
-          <span className="relative flex h-7 w-7 items-center justify-center rounded-md bg-brand/15 ring-1 ring-brand/40">
-            <span className="h-2 w-2 rounded-full bg-brand shadow-[0_0_12px_2px_var(--brand)]" />
-            <span className="absolute h-2 w-2 animate-ping rounded-full bg-brand/70" />
+          <span className="relative flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-md bg-white ring-1 ring-border">
+            <img
+              src={fujitecLogo}
+              alt="Fujitec"
+              width={1584}
+              height={672}
+              className="h-4 w-auto"
+            />
           </span>
           {!collapsed && (
             <div className="flex flex-col leading-tight">
