@@ -92,8 +92,8 @@ function LoginPage() {
           <h1 className="text-[20px] font-semibold tracking-tight text-foreground">
             Fujitec Pulse
           </h1>
-          <p className="mt-1 text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
-            IIoT Intelligence Console
+          <p className="mx-auto mt-2 max-w-[360px] text-center text-[12px] font-medium leading-relaxed text-muted-foreground">
+            An IIoT-Driven Predictive Maintenance Dashboard and Automated Lead Generation System for Elevators
           </p>
         </div>
 
@@ -170,12 +170,6 @@ function LoginPage() {
                 </>
               )}
             </Button>
-          </div>
-
-          <div className="mt-5 border-t border-border pt-4">
-            <p className="text-center text-[10px] uppercase tracking-[0.16em] text-muted-foreground">
-              Session persisted on this device
-            </p>
           </div>
         </form>
 
