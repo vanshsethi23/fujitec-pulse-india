@@ -3,7 +3,7 @@ import { useMemo, useRef, useState } from "react";
 import {
   Activity,
   AlertTriangle,
-  Bar as BarIcon,
+  BarChart3,
   Building2,
   Calendar,
   Download,
