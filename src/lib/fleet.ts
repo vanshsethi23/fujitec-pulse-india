@@ -322,3 +322,63 @@ export function csvRowsToUnits(rows: CsvRow[]): ScoredUnit[] {
   }
   return units;
 }
+
+/**
+ * Async, chunked variant of csvRowsToUnits — yields between batches so the
+ * UI thread can paint a progress bar while we ingest large CSVs.
+ */
+export async function csvRowsToUnitsAsync(
+  rows: CsvRow[],
+  onProgress?: (pct: number, phase: "aggregating" | "scoring") => void,
+  chunkSize = 2000,
+): Promise<ScoredUnit[]> {
+  const yieldToUi = () => new Promise<void>((r) => setTimeout(r, 0));
+  const byId = new Map<string, { latest: CsvRow; ts: number; install: number }>();
+
+  for (let i = 0; i < rows.length; i += chunkSize) {
+    const end = Math.min(i + chunkSize, rows.length);
+    for (let j = i; j < end; j++) {
+      const row = rows[j];
+      const id = String(row.Elevator_ID ?? "").trim();
+      if (!id) continue;
+      const ts = Date.parse(row.Timestamp ?? "") || 0;
+      const install = num(row.Install_Year, 0);
+      const cur = byId.get(id);
+      if (!cur || ts >= cur.ts) {
+        byId.set(id, { latest: row, ts, install: install || cur?.install || 0 });
+      } else if (!cur.install && install) {
+        cur.install = install;
+      }
+    }
+    onProgress?.(Math.round((end / rows.length) * 70), "aggregating");
+    await yieldToUi();
+  }
+
+  const entries = Array.from(byId.entries());
+  const units: ScoredUnit[] = [];
+  for (let i = 0; i < entries.length; i += chunkSize) {
+    const end = Math.min(i + chunkSize, entries.length);
+    for (let j = i; j < end; j++) {
+      const [id, { latest, install }] = entries[j];
+      const unit: ElevatorUnit = {
+        Unit_ID: id,
+        Site: "Imported Site",
+        City: "—",
+        Install_Year: install || NOW_YEAR - 5,
+        Motor_Temp_C: num(latest.Motor_Temp_C),
+        Vibration_RMS: num(latest.Vibration_RMS),
+        Current_Draw_A: num(latest.Current_Draw_A),
+        Leveling_Accuracy_mm: num(latest.Leveling_Accuracy_mm),
+        Door_Cycles_Hour: num(latest.Door_Cycles_Hour),
+        Door_Open_Close_MS: num(latest.Door_Open_Close_MS),
+        Main_Rope_Condition: num(latest.Main_Rope_Condition, 100),
+      };
+      units.push(scoreUnit(unit));
+    }
+    onProgress?.(70 + Math.round((end / entries.length) * 30), "scoring");
+    await yieldToUi();
+  }
+
+  onProgress?.(100, "scoring");
+  return units;
+}
