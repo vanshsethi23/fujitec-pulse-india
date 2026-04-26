@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import {
   Activity,
   AlertTriangle,
@@ -27,7 +27,6 @@ import {
   YAxis,
 } from "recharts";
 import jsPDF from "jspdf";
-import html2canvas from "html2canvas-pro";
 import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
 import { HealthDonut } from "@/components/fleet/health-donut";
@@ -82,7 +81,6 @@ function ageBracket(age: number): "0-5" | "6-15" | "16-25" | "25+" {
 function ReportsBody() {
   const { units, source, fileName } = useFleetData();
   const summary = useMemo(() => summarize(units), [units]);
-  const reportRef = useRef<HTMLDivElement>(null);
   const [exportingPdf, setExportingPdf] = useState(false);
 
   const leads = useMemo(() => units.filter(isModernizationLead), [units]);
@@ -181,69 +179,21 @@ function ReportsBody() {
   };
 
   const handleExportPdf = async () => {
-    const node = reportRef.current;
-    if (!node) return;
     setExportingPdf(true);
     try {
-      // Defer one tick so the spinner state paints.
       await new Promise((r) => requestAnimationFrame(() => r(null)));
-
-      const canvas = await html2canvas(node, {
-        backgroundColor: "#0B1220",
-        scale: 2,
-        logging: false,
-        useCORS: true,
+      buildExecutivePdf({
+        total: summary.total,
+        healthy: summary.healthy,
+        warning: summary.warning,
+        critical: summary.critical,
+        leadsCount: leads.length,
+        revenueInr,
+        safetyCount: safetyHazards.length,
+        readiness: readinessData,
+        top10,
+        sourceLabel: source === "csv" ? `CSV — ${fileName}` : "Archetype dataset",
       });
-
-      const imgData = canvas.toDataURL("image/jpeg", 0.92);
-      const pdf = new jsPDF({ unit: "pt", format: "a4", orientation: "p" });
-      const pageW = pdf.internal.pageSize.getWidth();
-      const pageH = pdf.internal.pageSize.getHeight();
-      const margin = 32;
-      const usableW = pageW - margin * 2;
-      const ratio = canvas.height / canvas.width;
-      const imgH = usableW * ratio;
-
-      // Slice tall image across pages.
-      let remainingH = imgH;
-      let offsetY = 0;
-      const sliceCanvas = document.createElement("canvas");
-      const ctx = sliceCanvas.getContext("2d");
-      if (!ctx) throw new Error("Canvas 2D unavailable");
-
-      const pxPerPdfPt = canvas.width / usableW;
-      const pageContentH = pageH - margin * 2;
-      const pageContentPx = pageContentH * pxPerPdfPt;
-
-      while (remainingH > 0) {
-        const sliceH = Math.min(pageContentPx, canvas.height - offsetY);
-        sliceCanvas.width = canvas.width;
-        sliceCanvas.height = sliceH;
-        ctx.fillStyle = "#0B1220";
-        ctx.fillRect(0, 0, sliceCanvas.width, sliceCanvas.height);
-        ctx.drawImage(
-          canvas,
-          0,
-          offsetY,
-          canvas.width,
-          sliceH,
-          0,
-          0,
-          canvas.width,
-          sliceH,
-        );
-        const slice = sliceCanvas.toDataURL("image/jpeg", 0.9);
-        const sliceHpt = sliceH / pxPerPdfPt;
-        if (offsetY > 0) pdf.addPage();
-        pdf.addImage(slice, "JPEG", margin, margin, usableW, sliceHpt);
-        offsetY += sliceH;
-        remainingH -= sliceHpt;
-      }
-
-      // Suppress the imported icon variable lint complaint by referencing it.
-      void imgData;
-
-      pdf.save(`Fujitec-Executive-Summary-${new Date().toISOString().slice(0, 10)}.pdf`);
       toast.success("Executive summary PDF generated");
     } catch (err) {
       console.error(err);
@@ -296,7 +246,7 @@ function ReportsBody() {
       </div>
 
       {/* The captured region */}
-      <div ref={reportRef} className="space-y-5 bg-background pb-2">
+      <div className="space-y-5 bg-background pb-2">
         {/* Branded report header (visible in PDF) */}
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-border bg-card p-4">
           <div className="flex items-center gap-3">
