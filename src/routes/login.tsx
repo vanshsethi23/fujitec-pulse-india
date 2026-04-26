@@ -49,7 +49,9 @@ function LoginPage() {
       setError(result.error);
       return;
     }
-    if (mode === "signup" && "message" in result) setMessage(result.message);
+    if (mode === "signup" && "message" in result && typeof result.message === "string") {
+      setMessage(result.message);
+    }
     if (mode === "signin") void navigate({ to: search.redirect ?? "/", replace: true });
   };
 
