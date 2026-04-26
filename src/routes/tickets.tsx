@@ -57,15 +57,6 @@ export const Route = createFileRoute("/tickets")({
   component: TicketsPage,
 });
 
-const ENGINEERS = [
-  "R. Iyer",
-  "P. Krishnan",
-  "S. Banerjee",
-  "M. Deshpande",
-  "A. Reddy",
-  "K. Nair",
-];
-
 const PRIORITY_META: Record<TicketPriority, { cls: string; dot: string }> = {
   Emergency: {
     cls: "border-critical/40 bg-critical/15 text-critical",
