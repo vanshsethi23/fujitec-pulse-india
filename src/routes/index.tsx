@@ -1,6 +1,6 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo } from "react";
-import { Activity, AlertTriangle, Building2, Download, IndianRupee, Target } from "lucide-react";
+import { Activity, AlertTriangle, Building2, FileBarChart, IndianRupee, Target } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { KpiCard } from "@/components/fleet/kpi-card";
 import { HealthDonut } from "@/components/fleet/health-donut";
@@ -93,12 +93,14 @@ function FleetOverviewBody() {
             </SelectContent>
           </Select>
           <Button
-            variant="outline"
+            asChild
             size="sm"
-            className="h-9 border-border bg-surface text-[12px] text-foreground"
+            className="h-9 gap-1.5 bg-brand text-[12px] font-medium text-brand-foreground hover:bg-brand/90"
           >
-            <Download className="mr-1.5 h-3.5 w-3.5" />
-            Export
+            <Link to="/reports">
+              <FileBarChart className="h-3.5 w-3.5" />
+              Reports
+            </Link>
           </Button>
         </div>
       </div>

@@ -13,6 +13,7 @@ import { Route as TicketsRouteImport } from './routes/tickets'
 import { Route as TelemetryRouteImport } from './routes/telemetry'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as ReportsRouteImport } from './routes/reports'
+import { Route as LoginRouteImport } from './routes/login'
 import { Route as LeadsRouteImport } from './routes/leads'
 import { Route as InspectorRouteImport } from './routes/inspector'
 import { Route as IndexRouteImport } from './routes/index'
@@ -37,6 +38,11 @@ const ReportsRoute = ReportsRouteImport.update({
   path: '/reports',
   getParentRoute: () => rootRouteImport,
 } as any)
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const LeadsRoute = LeadsRouteImport.update({
   id: '/leads',
   path: '/leads',
@@ -57,6 +63,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/inspector': typeof InspectorRoute
   '/leads': typeof LeadsRoute
+  '/login': typeof LoginRoute
   '/reports': typeof ReportsRoute
   '/settings': typeof SettingsRoute
   '/telemetry': typeof TelemetryRoute
@@ -66,6 +73,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/inspector': typeof InspectorRoute
   '/leads': typeof LeadsRoute
+  '/login': typeof LoginRoute
   '/reports': typeof ReportsRoute
   '/settings': typeof SettingsRoute
   '/telemetry': typeof TelemetryRoute
@@ -76,6 +84,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/inspector': typeof InspectorRoute
   '/leads': typeof LeadsRoute
+  '/login': typeof LoginRoute
   '/reports': typeof ReportsRoute
   '/settings': typeof SettingsRoute
   '/telemetry': typeof TelemetryRoute
@@ -87,6 +96,7 @@ export interface FileRouteTypes {
     | '/'
     | '/inspector'
     | '/leads'
+    | '/login'
     | '/reports'
     | '/settings'
     | '/telemetry'
@@ -96,6 +106,7 @@ export interface FileRouteTypes {
     | '/'
     | '/inspector'
     | '/leads'
+    | '/login'
     | '/reports'
     | '/settings'
     | '/telemetry'
@@ -105,6 +116,7 @@ export interface FileRouteTypes {
     | '/'
     | '/inspector'
     | '/leads'
+    | '/login'
     | '/reports'
     | '/settings'
     | '/telemetry'
@@ -115,6 +127,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   InspectorRoute: typeof InspectorRoute
   LeadsRoute: typeof LeadsRoute
+  LoginRoute: typeof LoginRoute
   ReportsRoute: typeof ReportsRoute
   SettingsRoute: typeof SettingsRoute
   TelemetryRoute: typeof TelemetryRoute
@@ -151,6 +164,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ReportsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/leads': {
       id: '/leads'
       path: '/leads'
@@ -179,6 +199,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   InspectorRoute: InspectorRoute,
   LeadsRoute: LeadsRoute,
+  LoginRoute: LoginRoute,
   ReportsRoute: ReportsRoute,
   SettingsRoute: SettingsRoute,
   TelemetryRoute: TelemetryRoute,
@@ -187,12 +208,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { createStart } from '@tanstack/react-start'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-  }
-}
