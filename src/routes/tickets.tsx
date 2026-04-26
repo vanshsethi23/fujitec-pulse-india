@@ -213,13 +213,31 @@ function EmptyTickets() {
 function KanbanColumn({
   status,
   tickets,
+  draggingTicketId,
+  onDragStart,
+  onDragEnd,
+  onDropTicket,
 }: {
   status: TicketStatus;
   tickets: ServiceTicket[];
+  draggingTicketId: string | null;
+  onDragStart: (id: string) => void;
+  onDragEnd: () => void;
+  onDropTicket: (ticketId: string, status: TicketStatus) => void;
 }) {
   const meta = STATUS_META[status];
   return (
-    <section className="flex flex-col rounded-md border border-border bg-card/40">
+    <section
+      onDragOver={(event) => event.preventDefault()}
+      onDrop={(event) => {
+        event.preventDefault();
+        const ticketId = event.dataTransfer.getData("text/plain") || draggingTicketId;
+        if (ticketId) onDropTicket(ticketId, status);
+        onDragEnd();
+      }}
+      className="flex min-h-[360px] flex-col rounded-md border border-border bg-card/40 transition-colors data-[dragging=true]:border-brand/50 data-[dragging=true]:bg-brand/5"
+      data-dragging={draggingTicketId ? "true" : "false"}
+    >
       <header className="flex items-center justify-between border-b border-border px-3 py-2.5">
         <div className="flex items-center gap-2">
           <span
@@ -241,14 +259,32 @@ function KanbanColumn({
             No tickets in this column.
           </div>
         ) : (
-          tickets.map((t) => <TicketCard key={t.id} ticket={t} />)
+          tickets.map((t) => (
+            <TicketCard
+              key={t.id}
+              ticket={t}
+              dragging={draggingTicketId === t.id}
+              onDragStart={onDragStart}
+              onDragEnd={onDragEnd}
+            />
+          ))
         )}
       </div>
     </section>
   );
 }
 
-function TicketCard({ ticket }: { ticket: ServiceTicket }) {
+function TicketCard({
+  ticket,
+  dragging,
+  onDragStart,
+  onDragEnd,
+}: {
+  ticket: ServiceTicket;
+  dragging: boolean;
+  onDragStart: (id: string) => void;
+  onDragEnd: () => void;
+}) {
   const { updateTicket, removeTicket, setSelectedUnitId } = useFleetData();
   const navigate = useNavigate();
   const meta = PRIORITY_META[ticket.priority];
@@ -267,7 +303,19 @@ function TicketCard({ ticket }: { ticket: ServiceTicket }) {
   };
 
   return (
-    <article className="group rounded-md border border-border bg-card p-3 shadow-sm transition hover:border-brand/40 hover:shadow-md">
+    <article
+      draggable
+      onDragStart={(event) => {
+        event.dataTransfer.effectAllowed = "move";
+        event.dataTransfer.setData("text/plain", ticket.id);
+        onDragStart(ticket.id);
+      }}
+      onDragEnd={onDragEnd}
+      className={cn(
+        "group cursor-grab rounded-md border border-border bg-card p-3 shadow-sm transition hover:border-brand/40 hover:shadow-md active:cursor-grabbing",
+        dragging && "scale-[0.98] opacity-60",
+      )}
+    >
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <div className="flex items-center gap-2">
