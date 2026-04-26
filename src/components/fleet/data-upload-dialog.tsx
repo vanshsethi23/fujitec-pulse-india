@@ -174,6 +174,7 @@ export function DataUploadDialog({ open, onOpenChange }: DataUploadDialogProps) 
   };
 
   const closeAndClear = (next: boolean) => {
+    if (ingesting) return; // do not allow close while processing
     if (!next) {
       setParsed(null);
       setError(null);
@@ -186,7 +187,7 @@ export function DataUploadDialog({ open, onOpenChange }: DataUploadDialogProps) 
   return (
     <Dialog open={open} onOpenChange={closeAndClear}>
       <DialogContent
-        className="w-[calc(100vw-2rem)] max-w-[860px] overflow-hidden border-border bg-card p-0"
+        className="relative w-[calc(100vw-2rem)] max-w-[860px] overflow-hidden border-border bg-card p-0"
       >
         <div className="flex flex-col gap-4 p-6 pb-4">
           <DialogHeader>
