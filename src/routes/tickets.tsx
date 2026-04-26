@@ -95,9 +95,17 @@ function TicketsPage() {
 }
 
 function TicketsBody() {
-  const { tickets } = useFleetData();
+  const { tickets, updateTicket } = useFleetData();
   const [priorityFilter, setPriorityFilter] = useState<"all" | TicketPriority>("all");
   const [search, setSearch] = useState("");
+  const [draggingTicketId, setDraggingTicketId] = useState<string | null>(null);
+
+  const moveTicket = (ticketId: string, status: TicketStatus) => {
+    const ticket = tickets.find((t) => t.id === ticketId);
+    if (!ticket || ticket.status === status) return;
+    updateTicket(ticketId, { status });
+    toast.success(`${ticket.id} moved to ${STATUS_META[status].label}`);
+  };
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -169,7 +177,15 @@ function TicketsBody() {
       ) : (
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
           {STATUSES.map((status) => (
-            <KanbanColumn key={status} status={status} tickets={byStatus[status]} />
+            <KanbanColumn
+              key={status}
+              status={status}
+              tickets={byStatus[status]}
+              draggingTicketId={draggingTicketId}
+              onDragStart={setDraggingTicketId}
+              onDragEnd={() => setDraggingTicketId(null)}
+              onDropTicket={moveTicket}
+            />
           ))}
         </div>
       )}
