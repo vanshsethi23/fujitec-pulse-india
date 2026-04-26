@@ -1,15 +1,36 @@
 import { useState } from "react";
-import { Bell, Database, Search, ChevronRight } from "lucide-react";
+import { Bell, Database, LogOut, Search, ChevronRight } from "lucide-react";
+import { useNavigate } from "@tanstack/react-router";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { DataUploadDialog } from "@/components/fleet/data-upload-dialog";
 import { useFleetData } from "@/components/fleet/fleet-data-context";
+import { useAuth } from "@/components/auth/auth-context";
+import { toast } from "sonner";
 
 export function TopBar({ crumb }: { crumb: string }) {
   const [uploadOpen, setUploadOpen] = useState(false);
   const { source, units } = useFleetData();
+  const { session, logout } = useAuth();
+  const navigate = useNavigate();
+
+  const initials = (session?.user ?? "AD").slice(0, 2).toUpperCase();
+
+  const handleLogout = () => {
+    logout();
+    toast.success("Signed out");
+    void navigate({ to: "/login", replace: true });
+  };
 
   return (
     <header className="sticky top-0 z-30 flex h-14 items-center gap-3 border-b border-border bg-background/80 px-4 backdrop-blur">
@@ -61,11 +82,35 @@ export function TopBar({ crumb }: { crumb: string }) {
           <span className="absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-warning" />
         </button>
 
-        <Avatar className="h-9 w-9 border border-border">
-          <AvatarFallback className="bg-brand/15 text-[11px] font-semibold text-brand">
-            RS
-          </AvatarFallback>
-        </Avatar>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button className="rounded-full focus:outline-none focus:ring-2 focus:ring-brand/40">
+              <Avatar className="h-9 w-9 border border-border">
+                <AvatarFallback className="bg-brand/15 text-[11px] font-semibold text-brand">
+                  {initials}
+                </AvatarFallback>
+              </Avatar>
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-52">
+            <DropdownMenuLabel className="text-[11px]">
+              <div className="font-semibold text-foreground">
+                {session?.user ?? "Operator"}
+              </div>
+              <div className="text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
+                Admin · Fujitec Pulse
+              </div>
+            </DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              onClick={handleLogout}
+              className="text-critical focus:text-critical"
+            >
+              <LogOut className="mr-2 h-3.5 w-3.5" />
+              Sign out
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
       <DataUploadDialog open={uploadOpen} onOpenChange={setUploadOpen} />
