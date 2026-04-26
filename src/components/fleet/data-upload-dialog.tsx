@@ -171,7 +171,7 @@ export function DataUploadDialog({ open, onOpenChange }: DataUploadDialogProps) 
 
   return (
     <Dialog open={open} onOpenChange={closeAndClear}>
-      <DialogContent className="relative w-[calc(100vw-2rem)] max-w-[860px] border-border bg-card p-0">
+      <DialogContent className="relative w-[calc(100vw-2rem)] max-w-[860px] overflow-hidden border-border bg-card p-0">
         <div className="flex flex-col gap-4 p-6 pb-4">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-foreground">
@@ -227,10 +227,14 @@ export function DataUploadDialog({ open, onOpenChange }: DataUploadDialogProps) 
           </div>
         </div>
 
-        {/* Step content */}
-        <div className="px-6 pb-2">
-          {step === "upload" ? (
-            <div className="space-y-3">
+        {/* Step content — sliding viewport */}
+        <div className="relative w-full overflow-hidden px-6 pb-2">
+          <div
+            className="flex w-full transition-transform duration-300 ease-in-out"
+            style={{ transform: step === "upload" ? "translateX(0%)" : "translateX(-100%)" }}
+          >
+            {/* Step 1 — Upload */}
+            <div className="w-full shrink-0 space-y-3 pr-2">
               {/* Active dataset chip */}
               <div className="flex items-center justify-between rounded-md border border-border bg-surface px-3 py-2 text-[11px]">
                 <span className="truncate text-muted-foreground">
@@ -323,9 +327,11 @@ export function DataUploadDialog({ open, onOpenChange }: DataUploadDialogProps) 
                 </div>
               )}
             </div>
-          ) : (
-            parsed && (
-              <div className="space-y-3">
+
+            {/* Step 2 — Preview */}
+            <div className="w-full shrink-0 space-y-3 pl-2">
+              {parsed ? (
+                <>
                 <div className="flex items-center justify-between gap-2 rounded-md border border-healthy/30 bg-healthy/10 px-3 py-2 text-[12px] text-healthy">
                   <div className="flex min-w-0 items-center gap-2">
                     <CheckCircle2 className="h-4 w-4 shrink-0" />
@@ -338,11 +344,11 @@ export function DataUploadDialog({ open, onOpenChange }: DataUploadDialogProps) 
                   </span>
                 </div>
 
-                <div>
+                <div className="w-full min-w-0">
                   <div className="mb-1.5 text-[10px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
                     First 5 rows preview
                   </div>
-                  <div className="max-h-[300px] w-full overflow-auto rounded-md border border-border">
+                  <div className="max-h-[300px] w-full max-w-full overflow-x-auto overflow-y-auto rounded-md border border-border">
                     <Table>
                       <TableHeader className="sticky top-0 z-10 bg-surface">
                         <TableRow className="border-border hover:bg-transparent">
@@ -373,9 +379,12 @@ export function DataUploadDialog({ open, onOpenChange }: DataUploadDialogProps) 
                     </Table>
                   </div>
                 </div>
-              </div>
-            )
-          )}
+                </>
+              ) : (
+                <div className="h-[200px]" />
+              )}
+            </div>
+          </div>
         </div>
 
         <DialogFooter className="gap-2 border-t border-border bg-card/50 p-4 sm:gap-2">
