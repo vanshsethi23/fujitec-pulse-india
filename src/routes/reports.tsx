@@ -79,8 +79,8 @@ function ageBracket(age: number): "0-5" | "6-15" | "16-25" | "25+" {
 }
 
 function ReportsBody() {
-  const { units, source, fileName } = useFleetData();
-  const summary = useMemo(() => summarize(units), [units]);
+  const { units, source, fileName, averageTicketInr } = useFleetData();
+  const summary = useMemo(() => summarize(units, averageTicketInr), [units, averageTicketInr]);
   const [exportingPdf, setExportingPdf] = useState(false);
 
   const leads = useMemo(() => units.filter(isModernizationLead), [units]);
@@ -114,7 +114,7 @@ function ReportsBody() {
     ];
   }, [units]);
 
-  const revenueInr = leads.length * THRESHOLDS.ticketInr;
+  const revenueInr = leads.length * averageTicketInr;
 
   /* ---------- Exports ---------- */
 
@@ -158,7 +158,7 @@ function ReportsBody() {
       u.Leveling_Accuracy_mm.toFixed(2),
       u.score.toFixed(3),
       u.status,
-      THRESHOLDS.ticketInr,
+      averageTicketInr,
       leadReasons(u).join(" | "),
     ]);
     const csv =
@@ -189,6 +189,7 @@ function ReportsBody() {
         critical: summary.critical,
         leadsCount: leads.length,
         revenueInr,
+        averageTicketInr,
         safetyCount: safetyHazards.length,
         readiness: readinessData,
         top10,
@@ -284,7 +285,7 @@ function ReportsBody() {
             critical={summary.critical}
             total={summary.total}
           />
-          <PipelineCard leads={leads.length} revenueInr={revenueInr} />
+          <PipelineCard leads={leads.length} revenueInr={revenueInr} averageTicketInr={averageTicketInr} />
           <SafetyCard count={safetyHazards.length} total={summary.total} />
         </div>
 
