@@ -41,8 +41,8 @@ export const THRESHOLDS = {
     ageYears: 30,
     ropeRiskPct: 10, // (100 - condition); cap at 10pts of thinning
   },
-  // Indicative INR ticket per modernization (used for revenue opportunity card).
-  ticketInr: 2_750_000,
+  // Default INR ticket per modernization; user-configurable from Settings.
+  ticketInr: 1_450_000,
 };
 
 export interface ThresholdOverrides {
@@ -100,7 +100,7 @@ export function statusForScore(score: number): UnitStatus {
 
 // Sales-pipeline criteria: legacy install OR rope thinning into replacement zone.
 export const LEAD_RULES = {
-  installBefore: 2011,
+  installBefore: 2006,
   ropeBelow: 96.0,
 } as const;
 
@@ -124,7 +124,7 @@ export function leadReasons(u: ScoredUnit): string[] {
     );
   }
   if (u.Vibration_RMS > 0.15) reasons.push("High Vibration");
-  if (u.Install_Year < LEAD_RULES.installBefore) reasons.push(`${u.age} Years Old`);
+  if (u.Install_Year < LEAD_RULES.installBefore) reasons.push(`Installed before ${LEAD_RULES.installBefore}`);
   if (u.Leveling_Accuracy_mm > 4) reasons.push("Leveling Drift");
   if (u.Current_Draw_A > 22) reasons.push("Current Strain");
   if (u.Motor_Temp_C > 60) reasons.push("Motor Overheat");
@@ -221,7 +221,7 @@ export interface FleetSummary {
   distribution: { name: string; value: number; key: UnitStatus }[];
 }
 
-export function summarize(units: ScoredUnit[]): FleetSummary {
+export function summarize(units: ScoredUnit[], averageTicketInr = THRESHOLDS.ticketInr): FleetSummary {
   const critical = units.filter((u) => u.status === "critical").length;
   const warning = units.filter((u) => u.status === "warning").length;
   const healthy = units.filter((u) => u.status === "healthy").length;
@@ -240,7 +240,7 @@ export function summarize(units: ScoredUnit[]): FleetSummary {
     warning,
     healthy,
     leads,
-    revenueInr: leads * THRESHOLDS.ticketInr,
+    revenueInr: leads * averageTicketInr,
     histogram,
     distribution: [
       { name: "Healthy", value: healthy, key: "healthy" },

@@ -79,8 +79,8 @@ function ageBracket(age: number): "0-5" | "6-15" | "16-25" | "25+" {
 }
 
 function ReportsBody() {
-  const { units, source, fileName } = useFleetData();
-  const summary = useMemo(() => summarize(units), [units]);
+  const { units, source, fileName, averageTicketInr } = useFleetData();
+  const summary = useMemo(() => summarize(units, averageTicketInr), [units, averageTicketInr]);
   const [exportingPdf, setExportingPdf] = useState(false);
 
   const leads = useMemo(() => units.filter(isModernizationLead), [units]);
@@ -114,7 +114,7 @@ function ReportsBody() {
     ];
   }, [units]);
 
-  const revenueInr = leads.length * THRESHOLDS.ticketInr;
+  const revenueInr = leads.length * averageTicketInr;
 
   /* ---------- Exports ---------- */
 
@@ -158,7 +158,7 @@ function ReportsBody() {
       u.Leveling_Accuracy_mm.toFixed(2),
       u.score.toFixed(3),
       u.status,
-      THRESHOLDS.ticketInr,
+      averageTicketInr,
       leadReasons(u).join(" | "),
     ]);
     const csv =
@@ -189,6 +189,7 @@ function ReportsBody() {
         critical: summary.critical,
         leadsCount: leads.length,
         revenueInr,
+        averageTicketInr,
         safetyCount: safetyHazards.length,
         readiness: readinessData,
         top10,
@@ -284,7 +285,7 @@ function ReportsBody() {
             critical={summary.critical}
             total={summary.total}
           />
-          <PipelineCard leads={leads.length} revenueInr={revenueInr} />
+          <PipelineCard leads={leads.length} revenueInr={revenueInr} averageTicketInr={averageTicketInr} />
           <SafetyCard count={safetyHazards.length} total={summary.total} />
         </div>
 
@@ -442,7 +443,15 @@ function RiskCell({
   );
 }
 
-function PipelineCard({ leads, revenueInr }: { leads: number; revenueInr: number }) {
+function PipelineCard({
+  leads,
+  revenueInr,
+  averageTicketInr,
+}: {
+  leads: number;
+  revenueInr: number;
+  averageTicketInr: number;
+}) {
   return (
     <article className="rounded-md border border-border bg-card p-4">
       <div className="flex items-center justify-between">
@@ -468,7 +477,7 @@ function PipelineCard({ leads, revenueInr }: { leads: number; revenueInr: number
           {formatInrCompact(revenueInr)}
         </div>
         <div className="mt-0.5 text-[10px] text-muted-foreground">
-          {leads} × ₹27.5L average modernization ticket
+          {leads} × {formatInrCompact(averageTicketInr)} average modernization ticket
         </div>
       </div>
     </article>
@@ -633,6 +642,7 @@ interface PdfData {
   critical: number;
   leadsCount: number;
   revenueInr: number;
+  averageTicketInr: number;
   safetyCount: number;
   readiness: { bracket: string; count: number; key: string }[];
   top10: ScoredUnit[];
@@ -747,7 +757,7 @@ function buildExecutivePdf(d: PdfData): void {
     "Modernization Pipeline",
     String(d.leadsCount),
     C.warning,
-    `Revenue Opportunity ${formatInrCompact(d.revenueInr)}\n${d.leadsCount} qualified leads`,
+    `Revenue Opportunity ${formatInrCompact(d.revenueInr)}\n${d.leadsCount} leads × ${formatInrCompact(d.averageTicketInr)} ATV`,
   );
   drawCard(
     margin + (cardW + gap) * 2,

@@ -51,6 +51,8 @@ interface FleetDataValue {
   removeTicket: (id: string) => void;
   thresholds: ThresholdOverrides;
   setThresholds: (next: ThresholdOverrides) => void;
+  averageTicketInr: number;
+  setAverageTicketInr: (next: number) => void;
   theme: "dark" | "light";
   toggleTheme: () => void;
 }
@@ -112,6 +114,8 @@ const STORAGE_KEY = "fujitec-pulse:fleet-v2";
 const TICKETS_KEY = "fujitec-pulse:tickets-v1";
 const THRESHOLDS_KEY = "fujitec-pulse:thresholds-v1";
 const THEME_KEY = "fujitec-pulse:theme-v1";
+const COMMERCIAL_KEY = "fujitec-pulse:commercial-v1";
+const DEFAULT_AVERAGE_TICKET_INR = 1_450_000;
 
 const DEFAULT_THRESHOLDS: ThresholdOverrides = {
   ropeWarningBelow: 96,
@@ -140,6 +144,19 @@ function loadTheme(): "dark" | "light" {
     return v === "light" ? "light" : "dark";
   } catch {
     return "dark";
+  }
+}
+
+function loadAverageTicketInr(): number {
+  if (typeof window === "undefined") return DEFAULT_AVERAGE_TICKET_INR;
+  try {
+    const raw = window.localStorage.getItem(COMMERCIAL_KEY);
+    if (!raw) return DEFAULT_AVERAGE_TICKET_INR;
+    const parsed = JSON.parse(raw) as { averageTicketInr?: number };
+    const value = Number(parsed.averageTicketInr);
+    return Number.isFinite(value) && value > 0 ? value : DEFAULT_AVERAGE_TICKET_INR;
+  } catch {
+    return DEFAULT_AVERAGE_TICKET_INR;
   }
 }
 
@@ -191,6 +208,7 @@ export function FleetDataProvider({ children }: { children: ReactNode }) {
   const [selectedUnitId, setSelectedUnitId] = useState<string | null>(null);
   const [tickets, setTickets] = useState<ServiceTicket[]>(() => loadTickets());
   const [thresholds, setThresholdsState] = useState<ThresholdOverrides>(initialThresholds);
+  const [averageTicketInr, setAverageTicketInrState] = useState(() => loadAverageTicketInr());
   const [theme, setTheme] = useState<"dark" | "light">(() => loadTheme());
 
   // Apply theme to <html>.
@@ -292,6 +310,17 @@ export function FleetDataProvider({ children }: { children: ReactNode }) {
       setTickets((cur) => cur.map((t) => (t.id === id ? { ...t, ...patch } : t))),
     removeTicket: (id) => setTickets((cur) => cur.filter((t) => t.id !== id)),
     thresholds,
+    averageTicketInr,
+    setAverageTicketInr: (next) => {
+      setAverageTicketInrState(next);
+      try {
+        if (typeof window !== "undefined") {
+          window.localStorage.setItem(COMMERCIAL_KEY, JSON.stringify({ averageTicketInr: next }));
+        }
+      } catch {
+        /* ignore */
+      }
+    },
     setThresholds: (next) => {
       setThresholdsState(next);
       setThresholdOverrides(next);

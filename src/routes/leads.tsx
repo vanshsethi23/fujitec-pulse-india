@@ -18,7 +18,6 @@ import {
   formatInrCompact,
   isModernizationLead,
   leadReasons,
-  THRESHOLDS,
   type ScoredUnit,
 } from "@/lib/fleet";
 import { useFleetData } from "@/components/fleet/fleet-data-context";
@@ -94,7 +93,7 @@ function ReasonChips({ reasons }: { reasons: string[] }) {
 
 function LeadsBody() {
   const navigate = useNavigate();
-  const { units, source, fileName, setSelectedUnitId } = useFleetData();
+  const { units, source, fileName, setSelectedUnitId, averageTicketInr } = useFleetData();
   const [query, setQuery] = useState("");
   const [sortDesc, setSortDesc] = useState(true);
   const [proposalUnit, setProposalUnit] = useState<ScoredUnit | null>(null);
@@ -127,7 +126,7 @@ function LeadsBody() {
     return rows;
   }, [enriched, query, sortDesc]);
 
-  const revenue = leads.length * THRESHOLDS.ticketInr;
+  const revenue = leads.length * averageTicketInr;
   const avgScore = leads.length
     ? leads.reduce((s, u) => s + u.score, 0) / leads.length
     : 0;
@@ -157,14 +156,14 @@ function LeadsBody() {
           label="Qualified Leads"
           value={leads.length.toString()}
           accent="warning"
-          sub="Pre-2011 install OR Main Rope Condition < 96%"
+          sub="Pre-2006 install OR Main Rope Condition < 96%"
         />
         <SummaryCard
           icon={IndianRupee}
           label="Revenue Opportunity"
           value={formatInrCompact(revenue)}
           accent="healthy"
-          sub={`${leads.length} × ₹27.5L avg ticket`}
+          sub={`${leads.length} × ${formatInrCompact(averageTicketInr)} ATV`}
         />
         <SummaryCard
           icon={TrendingUp}
@@ -242,6 +241,9 @@ function LeadsBody() {
                   )}
                 </TableHead>
                 <TableHead className="text-[11px] uppercase tracking-[0.1em]">Reason</TableHead>
+                <TableHead className="text-right text-[11px] uppercase tracking-[0.1em]">
+                  Est. Revenue
+                </TableHead>
                 <TableHead className="w-[180px] text-right text-[11px] uppercase tracking-[0.1em]">
                   Action
                 </TableHead>
@@ -254,6 +256,7 @@ function LeadsBody() {
                   rank={idx + 1}
                   unit={unit}
                   reasons={reasons}
+                  averageTicketInr={averageTicketInr}
                   onSelect={() => openInspector(unit.Unit_ID)}
                   onProposal={() => setProposalUnit(unit)}
                 />
@@ -261,7 +264,7 @@ function LeadsBody() {
               {filteredSorted.length === 0 && (
                 <TableRow>
                   <TableCell
-                    colSpan={10}
+                    colSpan={11}
                     className="py-12 text-center text-sm text-muted-foreground"
                   >
                     No leads match — fleet is in great shape, or refine the search.
@@ -286,12 +289,14 @@ function LeadRow({
   rank,
   unit,
   reasons,
+  averageTicketInr,
   onSelect,
   onProposal,
 }: {
   rank: number;
   unit: ScoredUnit;
   reasons: string[];
+  averageTicketInr: number;
   onSelect: () => void;
   onProposal: () => void;
 }) {
@@ -330,6 +335,9 @@ function LeadRow({
       </TableCell>
       <TableCell>
         <ReasonChips reasons={reasons} />
+      </TableCell>
+      <TableCell className="text-right font-mono text-[12px] text-foreground">
+        {formatInrCompact(averageTicketInr)}
       </TableCell>
       <TableCell className="text-right">
         <Button

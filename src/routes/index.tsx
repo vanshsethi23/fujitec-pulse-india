@@ -43,8 +43,8 @@ function FleetOverview() {
 }
 
 function FleetOverviewBody() {
-  const { units, source, fileName } = useFleetData();
-  const summary = useMemo(() => summarize(units), [units]);
+  const { units, source, fileName, averageTicketInr } = useFleetData();
+  const summary = useMemo(() => summarize(units, averageTicketInr), [units, averageTicketInr]);
 
   const lastSync = useMemo(() => {
     return new Date().toLocaleString("en-IN", {
@@ -112,7 +112,7 @@ function FleetOverviewBody() {
         <KpiCard
           label="Modernization Leads"
           value={summary.leads.toString()}
-          sublabel="Pre-2011 install or Main Rope Condition < 96%"
+          sublabel="Pre-2006 install or Main Rope Condition < 96%"
           delta={6.8}
           spark={spark(53, summary.leads, 3)}
           accent="warning"
@@ -121,7 +121,7 @@ function FleetOverviewBody() {
         <KpiCard
           label="Revenue Opportunity"
           value={formatInrCompact(summary.revenueInr)}
-          sublabel={`${summary.leads} leads · ₹27.5L avg ticket`}
+          sublabel={`${summary.leads} leads · ${formatInrCompact(averageTicketInr)} ATV`}
           delta={9.1}
           spark={spark(71, summary.revenueInr / 1e7, 0.4)}
           accent="healthy"
