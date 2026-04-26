@@ -8,21 +8,21 @@ import { useAuth } from "./auth-context";
  * Showing a brief blank gate prevents protected content from flashing.
  */
 export function RequireAuth({ children }: { children: ReactNode }) {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, loading } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
   useEffect(() => {
-    if (!isAuthenticated) {
+    if (!loading && !isAuthenticated) {
       void navigate({
         to: "/login",
         search: { redirect: location.pathname + location.search },
         replace: true,
       });
     }
-  }, [isAuthenticated, location.pathname, location.search, navigate]);
+  }, [isAuthenticated, loading, location.pathname, location.search, navigate]);
 
-  if (!isAuthenticated) {
+  if (loading || !isAuthenticated) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
         <div className="flex items-center gap-2 text-[12px] text-muted-foreground">
