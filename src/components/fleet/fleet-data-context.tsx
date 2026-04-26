@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
-import { generateFleet, type CsvRow, type ScoredUnit } from "@/lib/fleet";
+import { generateFleet, scoreUnit, type CsvRow, type ScoredUnit } from "@/lib/fleet";
+import { setThresholdOverrides, type ThresholdOverrides } from "@/lib/fleet";
 
 export interface TelemetryPoint {
   t: number; // unix ms
@@ -48,6 +49,10 @@ interface FleetDataValue {
   addTicket: (ticket: ServiceTicket) => void;
   updateTicket: (id: string, patch: Partial<ServiceTicket>) => void;
   removeTicket: (id: string) => void;
+  thresholds: ThresholdOverrides;
+  setThresholds: (next: ThresholdOverrides) => void;
+  theme: "dark" | "light";
+  toggleTheme: () => void;
 }
 
 const FleetDataContext = createContext<FleetDataValue | null>(null);
@@ -105,6 +110,38 @@ function synthesizeSeries(unit: ScoredUnit): TelemetryPoint[] {
 // v2: schema renamed Bearing_Health_Index → Main_Rope_Condition.
 const STORAGE_KEY = "fujitec-pulse:fleet-v2";
 const TICKETS_KEY = "fujitec-pulse:tickets-v1";
+const THRESHOLDS_KEY = "fujitec-pulse:thresholds-v1";
+const THEME_KEY = "fujitec-pulse:theme-v1";
+
+const DEFAULT_THRESHOLDS: ThresholdOverrides = {
+  ropeWarningBelow: 96,
+  ropeCriticalBelow: 94,
+};
+
+function loadThresholds(): ThresholdOverrides {
+  if (typeof window === "undefined") return DEFAULT_THRESHOLDS;
+  try {
+    const raw = window.localStorage.getItem(THRESHOLDS_KEY);
+    if (!raw) return DEFAULT_THRESHOLDS;
+    const parsed = JSON.parse(raw) as Partial<ThresholdOverrides>;
+    return {
+      ropeWarningBelow: Number(parsed.ropeWarningBelow ?? DEFAULT_THRESHOLDS.ropeWarningBelow),
+      ropeCriticalBelow: Number(parsed.ropeCriticalBelow ?? DEFAULT_THRESHOLDS.ropeCriticalBelow),
+    };
+  } catch {
+    return DEFAULT_THRESHOLDS;
+  }
+}
+
+function loadTheme(): "dark" | "light" {
+  if (typeof window === "undefined") return "dark";
+  try {
+    const v = window.localStorage.getItem(THEME_KEY);
+    return v === "light" ? "light" : "dark";
+  } catch {
+    return "dark";
+  }
+}
 
 function loadTickets(): ServiceTicket[] {
   if (typeof window === "undefined") return [];
@@ -139,6 +176,12 @@ function loadPersisted(): PersistedState | null {
 }
 
 export function FleetDataProvider({ children }: { children: ReactNode }) {
+  // Apply persisted thresholds before generating any units so scoring matches.
+  const initialThresholds = useMemo(() => {
+    const t = loadThresholds();
+    setThresholdOverrides(t);
+    return t;
+  }, []);
   const initial = useMemo(() => generateFleet(200, 7), []);
   const persisted = useMemo(() => loadPersisted(), []);
   const [units, setUnitsState] = useState<ScoredUnit[]>(persisted?.units ?? initial);
@@ -147,6 +190,21 @@ export function FleetDataProvider({ children }: { children: ReactNode }) {
   const [rawRows, setRawRows] = useState<CsvRow[]>(persisted?.rawRows ?? []);
   const [selectedUnitId, setSelectedUnitId] = useState<string | null>(null);
   const [tickets, setTickets] = useState<ServiceTicket[]>(() => loadTickets());
+  const [thresholds, setThresholdsState] = useState<ThresholdOverrides>(initialThresholds);
+  const [theme, setTheme] = useState<"dark" | "light">(() => loadTheme());
+
+  // Apply theme to <html>.
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    const root = document.documentElement;
+    if (theme === "light") root.classList.add("light");
+    else root.classList.remove("light");
+    try {
+      window.localStorage.setItem(THEME_KEY, theme);
+    } catch {
+      /* ignore */
+    }
+  }, [theme]);
 
   // Persist tickets whenever they change.
   useEffect(() => {
@@ -233,6 +291,22 @@ export function FleetDataProvider({ children }: { children: ReactNode }) {
     updateTicket: (id, patch) =>
       setTickets((cur) => cur.map((t) => (t.id === id ? { ...t, ...patch } : t))),
     removeTicket: (id) => setTickets((cur) => cur.filter((t) => t.id !== id)),
+    thresholds,
+    setThresholds: (next) => {
+      setThresholdsState(next);
+      setThresholdOverrides(next);
+      try {
+        if (typeof window !== "undefined") {
+          window.localStorage.setItem(THRESHOLDS_KEY, JSON.stringify(next));
+        }
+      } catch {
+        /* ignore */
+      }
+      // Re-score current units using the new thresholds.
+      setUnitsState((cur) => cur.map((u) => scoreUnit(u)));
+    },
+    theme,
+    toggleTheme: () => setTheme((t) => (t === "dark" ? "light" : "dark")),
   };
 
   return <FleetDataContext.Provider value={value}>{children}</FleetDataContext.Provider>;
