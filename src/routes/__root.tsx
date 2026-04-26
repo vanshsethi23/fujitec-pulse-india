@@ -2,6 +2,7 @@ import { Outlet, Link, createRootRoute, HeadContent, Scripts } from "@tanstack/r
 
 import appCss from "../styles.css?url";
 import { FleetDataProvider } from "@/components/fleet/fleet-data-context";
+import { AuthProvider } from "@/components/auth/auth-context";
 
 function NotFoundComponent() {
   return (
@@ -67,8 +68,10 @@ function RootShell({ children }: { children: React.ReactNode }) {
 
 function RootComponent() {
   return (
-    <FleetDataProvider>
-      <Outlet />
-    </FleetDataProvider>
+    <AuthProvider>
+      <FleetDataProvider>
+        <Outlet />
+      </FleetDataProvider>
+    </AuthProvider>
   );
 }
