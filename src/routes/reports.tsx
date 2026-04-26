@@ -443,7 +443,15 @@ function RiskCell({
   );
 }
 
-function PipelineCard({ leads, revenueInr }: { leads: number; revenueInr: number }) {
+function PipelineCard({
+  leads,
+  revenueInr,
+  averageTicketInr,
+}: {
+  leads: number;
+  revenueInr: number;
+  averageTicketInr: number;
+}) {
   return (
     <article className="rounded-md border border-border bg-card p-4">
       <div className="flex items-center justify-between">
@@ -469,7 +477,7 @@ function PipelineCard({ leads, revenueInr }: { leads: number; revenueInr: number
           {formatInrCompact(revenueInr)}
         </div>
         <div className="mt-0.5 text-[10px] text-muted-foreground">
-          {leads} × ₹27.5L average modernization ticket
+          {leads} × {formatInrCompact(averageTicketInr)} average modernization ticket
         </div>
       </div>
     </article>
@@ -634,6 +642,7 @@ interface PdfData {
   critical: number;
   leadsCount: number;
   revenueInr: number;
+  averageTicketInr: number;
   safetyCount: number;
   readiness: { bracket: string; count: number; key: string }[];
   top10: ScoredUnit[];
