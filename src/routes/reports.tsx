@@ -757,7 +757,7 @@ function buildExecutivePdf(d: PdfData): void {
     "Modernization Pipeline",
     String(d.leadsCount),
     C.warning,
-    `Revenue Opportunity ${formatInrCompact(d.revenueInr)}\n${d.leadsCount} qualified leads`,
+    `Revenue Opportunity ${formatInrCompact(d.revenueInr)}\n${d.leadsCount} leads × ${formatInrCompact(d.averageTicketInr)} ATV`,
   );
   drawCard(
     margin + (cardW + gap) * 2,
