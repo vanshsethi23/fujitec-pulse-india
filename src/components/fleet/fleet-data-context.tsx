@@ -1,10 +1,12 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { generateFleet, scoreUnit, type CsvRow, type ScoredUnit } from "@/lib/fleet";
 import { setThresholdOverrides, type ThresholdOverrides } from "@/lib/fleet";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/components/auth/auth-context";
 
 export interface TelemetryPoint {
-  t: number; // unix ms
-  label: string; // formatted timestamp for x-axis
+  t: number;
+  label: string;
   Motor_Temp_C: number;
   Current_Draw_A: number;
   Vibration_RMS: number;
@@ -16,7 +18,7 @@ export type TicketPriority = "Emergency" | "High" | "Routine";
 export type TicketStatus = "Open" | "In-Progress" | "Resolved";
 
 export interface ServiceTicket {
-  id: string; // e.g. TK-0042
+  id: string;
   unitId: string;
   site: string;
   city: string;
@@ -55,9 +57,11 @@ interface FleetDataValue {
   setAverageTicketInr: (next: number) => void;
   theme: "dark" | "light";
   toggleTheme: () => void;
+  cloudReady: boolean;
 }
 
 const FleetDataContext = createContext<FleetDataValue | null>(null);
+const db = supabase as any;
 
 const num = (v: unknown): number => {
   const n = typeof v === "number" ? v : parseFloat(String(v ?? "").trim());
@@ -66,20 +70,9 @@ const num = (v: unknown): number => {
 
 function fmtTs(ms: number): string {
   if (!Number.isFinite(ms) || ms <= 0) return "";
-  const d = new Date(ms);
-  return d.toLocaleString("en-IN", {
-    day: "2-digit",
-    month: "short",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-  });
+  return new Date(ms).toLocaleString("en-IN", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit", hour12: false });
 }
 
-/**
- * Synthesize a 48-point series for a mock unit so the inspector charts have
- * something realistic before a CSV is ingested. Deterministic per Unit_ID.
- */
 function synthesizeSeries(unit: ScoredUnit): TelemetryPoint[] {
   let s = 0;
   for (const ch of unit.Unit_ID) s = (s * 31 + ch.charCodeAt(0)) >>> 0;
@@ -90,7 +83,7 @@ function synthesizeSeries(unit: ScoredUnit): TelemetryPoint[] {
   const now = Date.now();
   const points: TelemetryPoint[] = [];
   for (let i = 47; i >= 0; i--) {
-    const t = now - i * 60 * 60 * 1000; // hourly
+    const t = now - i * 60 * 60 * 1000;
     const drift = (rand() - 0.5) * 0.15;
     const wave = Math.sin((47 - i) / 4) * 0.08;
     points.push({
@@ -100,141 +93,186 @@ function synthesizeSeries(unit: ScoredUnit): TelemetryPoint[] {
       Current_Draw_A: +(unit.Current_Draw_A * (1 + drift * 0.8 + wave * 0.6)).toFixed(2),
       Vibration_RMS: +(unit.Vibration_RMS * (1 + drift)).toFixed(4),
       Leveling_Accuracy_mm: +(unit.Leveling_Accuracy_mm * (1 + drift * 0.5)).toFixed(2),
-      Main_Rope_Condition: +Math.max(
-        90,
-        Math.min(100, unit.Main_Rope_Condition + drift * 0.5),
-      ).toFixed(2),
+      Main_Rope_Condition: +Math.max(90, Math.min(100, unit.Main_Rope_Condition + drift * 0.5)).toFixed(2),
     });
   }
   return points;
 }
 
-// v2: schema renamed Bearing_Health_Index → Main_Rope_Condition.
 const STORAGE_KEY = "fujitec-pulse:fleet-v2";
-const TICKETS_KEY = "fujitec-pulse:tickets-v1";
-const THRESHOLDS_KEY = "fujitec-pulse:thresholds-v1";
 const THEME_KEY = "fujitec-pulse:theme-v1";
-const COMMERCIAL_KEY = "fujitec-pulse:commercial-v1";
 const DEFAULT_AVERAGE_TICKET_INR = 1_450_000;
-
-const DEFAULT_THRESHOLDS: ThresholdOverrides = {
-  ropeWarningBelow: 96,
-  ropeCriticalBelow: 94,
-};
-
-function loadThresholds(): ThresholdOverrides {
-  if (typeof window === "undefined") return DEFAULT_THRESHOLDS;
-  try {
-    const raw = window.localStorage.getItem(THRESHOLDS_KEY);
-    if (!raw) return DEFAULT_THRESHOLDS;
-    const parsed = JSON.parse(raw) as Partial<ThresholdOverrides>;
-    return {
-      ropeWarningBelow: Number(parsed.ropeWarningBelow ?? DEFAULT_THRESHOLDS.ropeWarningBelow),
-      ropeCriticalBelow: Number(parsed.ropeCriticalBelow ?? DEFAULT_THRESHOLDS.ropeCriticalBelow),
-    };
-  } catch {
-    return DEFAULT_THRESHOLDS;
-  }
-}
+const DEFAULT_THRESHOLDS: ThresholdOverrides = { ropeWarningBelow: 96, ropeCriticalBelow: 94 };
 
 function loadTheme(): "dark" | "light" {
   if (typeof window === "undefined") return "dark";
-  try {
-    const v = window.localStorage.getItem(THEME_KEY);
-    return v === "light" ? "light" : "dark";
-  } catch {
-    return "dark";
-  }
+  try { return window.localStorage.getItem(THEME_KEY) === "light" ? "light" : "dark"; } catch { return "dark"; }
 }
 
-function loadAverageTicketInr(): number {
-  if (typeof window === "undefined") return DEFAULT_AVERAGE_TICKET_INR;
-  try {
-    const raw = window.localStorage.getItem(COMMERCIAL_KEY);
-    if (!raw) return DEFAULT_AVERAGE_TICKET_INR;
-    const parsed = JSON.parse(raw) as { averageTicketInr?: number };
-    const value = Number(parsed.averageTicketInr);
-    return Number.isFinite(value) && value > 0 ? value : DEFAULT_AVERAGE_TICKET_INR;
-  } catch {
-    return DEFAULT_AVERAGE_TICKET_INR;
-  }
-}
-
-function loadTickets(): ServiceTicket[] {
-  if (typeof window === "undefined") return [];
-  try {
-    const raw = window.localStorage.getItem(TICKETS_KEY);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw) as ServiceTicket[];
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
-}
-
-interface PersistedState {
-  source: "csv";
-  fileName: string | null;
-  units: ScoredUnit[];
-  rawRows: CsvRow[];
-}
-
-function loadPersisted(): PersistedState | null {
+function readLegacyFleet(): { units: ScoredUnit[]; rawRows: CsvRow[]; fileName: string | null } | null {
   if (typeof window === "undefined") return null;
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY);
     if (!raw) return null;
-    const parsed = JSON.parse(raw) as PersistedState;
-    if (!parsed?.units?.length) return null;
-    return parsed;
-  } catch {
-    return null;
-  }
+    const parsed = JSON.parse(raw) as { units?: ScoredUnit[]; rawRows?: CsvRow[]; fileName?: string | null };
+    if (!parsed.units?.length) return null;
+    return { units: parsed.units, rawRows: parsed.rawRows ?? [], fileName: parsed.fileName ?? "Imported CSV" };
+  } catch { return null; }
+}
+
+function unitToDb(userId: string, unit: ScoredUnit) {
+  return {
+    user_id: userId,
+    unit_id: unit.Unit_ID,
+    customer_name: null,
+    location: unit.Site,
+    region: unit.City,
+    install_year: unit.Install_Year,
+    door_cycles: Math.round(unit.Door_Cycles_Hour),
+    trips_per_day: null,
+    main_rope_condition: unit.Main_Rope_Condition,
+    vibration_mm_s: unit.Vibration_RMS,
+    brake_wear: null,
+    callbacks_90d: null,
+    downtime_hours_90d: null,
+    health_score: Math.round((1 - unit.score) * 100),
+    lead_status: unit.isLead ? "qualified" : "not_qualified",
+    source_row: unit,
+  };
+}
+
+function dbToUnit(row: any): ScoredUnit {
+  return scoreUnit({
+    Unit_ID: row.unit_id,
+    Site: row.location ?? "Imported Site",
+    City: row.region ?? "—",
+    Install_Year: Number(row.install_year ?? 2021),
+    Motor_Temp_C: Number(row.source_row?.Motor_Temp_C ?? 0),
+    Vibration_RMS: Number(row.vibration_mm_s ?? row.source_row?.Vibration_RMS ?? 0),
+    Current_Draw_A: Number(row.source_row?.Current_Draw_A ?? 0),
+    Leveling_Accuracy_mm: Number(row.source_row?.Leveling_Accuracy_mm ?? 0),
+    Door_Cycles_Hour: Number(row.source_row?.Door_Cycles_Hour ?? row.door_cycles ?? 0),
+    Door_Open_Close_MS: Number(row.source_row?.Door_Open_Close_MS ?? 0),
+    Main_Rope_Condition: Number(row.main_rope_condition ?? 100),
+  });
+}
+
+function rowToTelemetryDb(userId: string, row: CsvRow) {
+  const ms = Date.parse(row.Timestamp ?? "");
+  return {
+    user_id: userId,
+    elevator_id: String(row.Elevator_ID ?? "").trim(),
+    timestamp_text: row.Timestamp ?? null,
+    recorded_at: Number.isFinite(ms) ? new Date(ms).toISOString() : null,
+    install_year: num(row.Install_Year),
+    motor_temp_c: num(row.Motor_Temp_C),
+    vibration_rms: num(row.Vibration_RMS),
+    current_draw_a: num(row.Current_Draw_A),
+    leveling_accuracy_mm: num(row.Leveling_Accuracy_mm),
+    door_cycles_hour: num(row.Door_Cycles_Hour),
+    door_open_close_ms: num(row.Door_Open_Close_MS),
+    main_rope_condition: num(row.Main_Rope_Condition),
+    target_state: row.Target_State ?? null,
+    source_row: row,
+  };
+}
+
+function dbToTicket(row: any): ServiceTicket {
+  const payload = row.description ? JSON.parse(row.description) : {};
+  return {
+    id: row.id,
+    unitId: row.unit_id ?? payload.unitId ?? "",
+    site: payload.site ?? "Imported Site",
+    city: payload.city ?? "—",
+    priority: row.priority,
+    status: row.status,
+    assignee: row.owner ?? "Unassigned",
+    summary: row.title,
+    notes: payload.notes ?? "",
+    createdAt: row.created_at ? Date.parse(row.created_at) : Date.now(),
+    snapshot: payload.snapshot ?? { Motor_Temp_C: 0, Vibration_RMS: 0, Current_Draw_A: 0, Door_Open_Close_MS: 0, Main_Rope_Condition: 0, Leveling_Accuracy_mm: 0 },
+  };
+}
+
+function ticketToDb(userId: string, ticket: ServiceTicket) {
+  return {
+    id: ticket.id,
+    user_id: userId,
+    unit_id: ticket.unitId,
+    title: ticket.summary,
+    priority: ticket.priority,
+    status: ticket.status,
+    owner: ticket.assignee,
+    description: JSON.stringify({ site: ticket.site, city: ticket.city, notes: ticket.notes, snapshot: ticket.snapshot, unitId: ticket.unitId }),
+  };
 }
 
 export function FleetDataProvider({ children }: { children: ReactNode }) {
-  // Apply persisted thresholds before generating any units so scoring matches.
-  const initialThresholds = useMemo(() => {
-    const t = loadThresholds();
-    setThresholdOverrides(t);
-    return t;
-  }, []);
+  const { user, isAuthenticated } = useAuth();
   const initial = useMemo(() => generateFleet(200, 7), []);
-  const persisted = useMemo(() => loadPersisted(), []);
-  const [units, setUnitsState] = useState<ScoredUnit[]>(persisted?.units ?? initial);
-  const [source, setSource] = useState<"mock" | "csv">(persisted ? "csv" : "mock");
-  const [fileName, setFileName] = useState<string | null>(persisted?.fileName ?? null);
-  const [rawRows, setRawRows] = useState<CsvRow[]>(persisted?.rawRows ?? []);
+  const [units, setUnitsState] = useState<ScoredUnit[]>(initial);
+  const [source, setSource] = useState<"mock" | "csv">("mock");
+  const [fileName, setFileName] = useState<string | null>(null);
+  const [rawRows, setRawRows] = useState<CsvRow[]>([]);
   const [selectedUnitId, setSelectedUnitId] = useState<string | null>(null);
-  const [tickets, setTickets] = useState<ServiceTicket[]>(() => loadTickets());
-  const [thresholds, setThresholdsState] = useState<ThresholdOverrides>(initialThresholds);
-  const [averageTicketInr, setAverageTicketInrState] = useState(() => loadAverageTicketInr());
+  const [tickets, setTickets] = useState<ServiceTicket[]>([]);
+  const [thresholds, setThresholdsState] = useState<ThresholdOverrides>(DEFAULT_THRESHOLDS);
+  const [averageTicketInr, setAverageTicketInrState] = useState(DEFAULT_AVERAGE_TICKET_INR);
   const [theme, setTheme] = useState<"dark" | "light">(() => loadTheme());
+  const [cloudReady, setCloudReady] = useState(false);
 
-  // Apply theme to <html>.
   useEffect(() => {
     if (typeof document === "undefined") return;
-    const root = document.documentElement;
-    if (theme === "light") root.classList.add("light");
-    else root.classList.remove("light");
-    try {
-      window.localStorage.setItem(THEME_KEY, theme);
-    } catch {
-      /* ignore */
-    }
+    document.documentElement.classList.toggle("light", theme === "light");
+    try { window.localStorage.setItem(THEME_KEY, theme); } catch { /* ignore */ }
   }, [theme]);
 
-  // Persist tickets whenever they change.
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    try {
-      window.localStorage.setItem(TICKETS_KEY, JSON.stringify(tickets));
-    } catch {
-      // ignore quota errors
-    }
-  }, [tickets]);
+    if (!isAuthenticated || !user) return;
+    let alive = true;
+    setCloudReady(false);
+    void (async () => {
+      const [{ data: settings }, { data: unitRows }, { data: ticketRows }, { data: telemetryRows }] = await Promise.all([
+        db.from("fleet_settings").select("rope_replacement_trigger, critical_shutdown_limit, average_ticket_inr").eq("user_id", user.id).maybeSingle(),
+        db.from("fleet_units").select("*").eq("user_id", user.id).order("unit_id", { ascending: true }),
+        db.from("service_tickets").select("*").eq("user_id", user.id).order("created_at", { ascending: false }),
+        db.from("fleet_telemetry_rows").select("source_row").eq("user_id", user.id).order("recorded_at", { ascending: true }).limit(50000),
+      ]);
+      if (!alive) return;
+      const nextThresholds = {
+        ropeWarningBelow: Number(settings?.rope_replacement_trigger ?? DEFAULT_THRESHOLDS.ropeWarningBelow),
+        ropeCriticalBelow: Number(settings?.critical_shutdown_limit ?? DEFAULT_THRESHOLDS.ropeCriticalBelow),
+      };
+      setThresholdOverrides(nextThresholds);
+      setThresholdsState(nextThresholds);
+      setAverageTicketInrState(Number(settings?.average_ticket_inr ?? DEFAULT_AVERAGE_TICKET_INR));
+      setTickets(Array.isArray(ticketRows) ? ticketRows.map(dbToTicket) : []);
+      setRawRows(Array.isArray(telemetryRows) ? telemetryRows.map((r: any) => r.source_row as CsvRow) : []);
+      if (Array.isArray(unitRows) && unitRows.length) {
+        setUnitsState(unitRows.map(dbToUnit));
+        setSource("csv");
+        setFileName("Cloud Database");
+      } else {
+        const legacy = readLegacyFleet();
+        if (legacy) {
+          setUnitsState(legacy.units);
+          setRawRows(legacy.rawRows);
+          setFileName(legacy.fileName);
+          setSource("csv");
+          await db.from("fleet_units").upsert(legacy.units.map((u) => unitToDb(user.id, u)), { onConflict: "user_id,unit_id" });
+          if (legacy.rawRows.length) await db.from("fleet_telemetry_rows").insert(legacy.rawRows.filter((r) => r.Elevator_ID).map((r) => rowToTelemetryDb(user.id, r)));
+          window.localStorage.removeItem(STORAGE_KEY);
+        } else {
+          setUnitsState(initial);
+          setSource("mock");
+          setFileName(null);
+        }
+      }
+      setCloudReady(true);
+    })();
+    return () => { alive = false; };
+  }, [initial, isAuthenticated, user]);
 
-  // Memoized series cache — recomputes when raw rows or units change.
   const seriesByUnit = useMemo(() => {
     const map = new Map<string, TelemetryPoint[]>();
     if (source === "csv" && rawRows.length) {
@@ -244,15 +282,7 @@ export function FleetDataProvider({ children }: { children: ReactNode }) {
         const ms = Date.parse(row.Timestamp ?? "");
         if (!Number.isFinite(ms)) continue;
         const arr = map.get(id) ?? [];
-        arr.push({
-          t: ms,
-          label: fmtTs(ms),
-          Motor_Temp_C: num(row.Motor_Temp_C),
-          Current_Draw_A: num(row.Current_Draw_A),
-          Vibration_RMS: num(row.Vibration_RMS),
-          Leveling_Accuracy_mm: num(row.Leveling_Accuracy_mm),
-          Main_Rope_Condition: num(row.Main_Rope_Condition),
-        });
+        arr.push({ t: ms, label: fmtTs(ms), Motor_Temp_C: num(row.Motor_Temp_C), Current_Draw_A: num(row.Current_Draw_A), Vibration_RMS: num(row.Vibration_RMS), Leveling_Accuracy_mm: num(row.Leveling_Accuracy_mm), Main_Rope_Condition: num(row.Main_Rope_Condition) });
         map.set(id, arr);
       }
       for (const [, arr] of map) arr.sort((a, b) => a.t - b.t);
@@ -261,81 +291,58 @@ export function FleetDataProvider({ children }: { children: ReactNode }) {
   }, [rawRows, source]);
 
   const value: FleetDataValue = {
-    units,
-    source,
-    fileName,
+    units, source, fileName,
     setUnits: (next, name, rows) => {
-      setUnitsState(next);
-      setSource("csv");
-      setFileName(name);
-      setRawRows(rows);
-      try {
-        if (typeof window !== "undefined") {
-          const payload: PersistedState = {
-            source: "csv",
-            fileName: name,
-            units: next,
-            rawRows: rows,
-          };
-          window.localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
-        }
-      } catch {
-        // Quota exceeded or serialization error — keep in-memory state regardless.
-      }
+      setUnitsState(next); setSource("csv"); setFileName(name); setRawRows(rows);
+      if (user) void (async () => {
+        await Promise.all([
+          db.from("fleet_units").delete().eq("user_id", user.id),
+          db.from("fleet_telemetry_rows").delete().eq("user_id", user.id),
+        ]);
+        await db.from("fleet_units").insert(next.map((u) => unitToDb(user.id, u)));
+        const telemetry = rows.filter((r) => r.Elevator_ID).map((r) => rowToTelemetryDb(user.id, r));
+        for (let i = 0; i < telemetry.length; i += 1000) await db.from("fleet_telemetry_rows").insert(telemetry.slice(i, i + 1000));
+      })();
     },
     reset: () => {
-      setUnitsState(initial);
-      setSource("mock");
-      setFileName(null);
-      setRawRows([]);
-      try {
-        if (typeof window !== "undefined") {
-          window.localStorage.removeItem(STORAGE_KEY);
-        }
-      } catch {
-        // ignore
+      setUnitsState(initial); setSource("mock"); setFileName(null); setRawRows([]); setTickets([]);
+      if (user) void Promise.all([
+        db.from("fleet_units").delete().eq("user_id", user.id),
+        db.from("fleet_telemetry_rows").delete().eq("user_id", user.id),
+        db.from("service_tickets").delete().eq("user_id", user.id),
+      ]);
+      try { if (typeof window !== "undefined") window.localStorage.removeItem(STORAGE_KEY); } catch { /* ignore */ }
+    },
+    getTimeseries: (unitId) => seriesByUnit.get(unitId) ?? (units.find((u) => u.Unit_ID === unitId) ? synthesizeSeries(units.find((u) => u.Unit_ID === unitId)!) : []),
+    selectedUnitId, setSelectedUnitId, tickets,
+    addTicket: (ticket) => {
+      setTickets((cur) => [ticket, ...cur]);
+      if (user) void db.from("service_tickets").upsert(ticketToDb(user.id, ticket));
+    },
+    updateTicket: (id, patch) => {
+      setTickets((cur) => cur.map((t) => (t.id === id ? { ...t, ...patch } : t)));
+      if (user) {
+        const next = tickets.find((t) => t.id === id);
+        if (next) void db.from("service_tickets").upsert(ticketToDb(user.id, { ...next, ...patch }));
       }
     },
-    getTimeseries: (unitId: string) => {
-      const csvSeries = seriesByUnit.get(unitId);
-      if (csvSeries && csvSeries.length) return csvSeries;
-      const unit = units.find((u) => u.Unit_ID === unitId);
-      return unit ? synthesizeSeries(unit) : [];
+    removeTicket: (id) => {
+      setTickets((cur) => cur.filter((t) => t.id !== id));
+      if (user) void db.from("service_tickets").delete().eq("user_id", user.id).eq("id", id);
     },
-    selectedUnitId,
-    setSelectedUnitId,
-    tickets,
-    addTicket: (ticket) => setTickets((cur) => [ticket, ...cur]),
-    updateTicket: (id, patch) =>
-      setTickets((cur) => cur.map((t) => (t.id === id ? { ...t, ...patch } : t))),
-    removeTicket: (id) => setTickets((cur) => cur.filter((t) => t.id !== id)),
     thresholds,
     averageTicketInr,
     setAverageTicketInr: (next) => {
       setAverageTicketInrState(next);
-      try {
-        if (typeof window !== "undefined") {
-          window.localStorage.setItem(COMMERCIAL_KEY, JSON.stringify({ averageTicketInr: next }));
-        }
-      } catch {
-        /* ignore */
-      }
+      if (user) void db.from("fleet_settings").upsert({ user_id: user.id, average_ticket_inr: next }, { onConflict: "user_id" });
     },
     setThresholds: (next) => {
-      setThresholdsState(next);
-      setThresholdOverrides(next);
-      try {
-        if (typeof window !== "undefined") {
-          window.localStorage.setItem(THRESHOLDS_KEY, JSON.stringify(next));
-        }
-      } catch {
-        /* ignore */
-      }
-      // Re-score current units using the new thresholds.
-      setUnitsState((cur) => cur.map((u) => scoreUnit(u)));
+      setThresholdsState(next); setThresholdOverrides(next); setUnitsState((cur) => cur.map((u) => scoreUnit(u)));
+      if (user) void db.from("fleet_settings").upsert({ user_id: user.id, rope_replacement_trigger: next.ropeWarningBelow, critical_shutdown_limit: next.ropeCriticalBelow }, { onConflict: "user_id" });
     },
     theme,
     toggleTheme: () => setTheme((t) => (t === "dark" ? "light" : "dark")),
+    cloudReady,
   };
 
   return <FleetDataContext.Provider value={value}>{children}</FleetDataContext.Provider>;

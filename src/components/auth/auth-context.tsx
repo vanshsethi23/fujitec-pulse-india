@@ -1,76 +1,117 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
-
-const STORAGE_KEY = "fujitec-pulse:auth-v1";
-
-// Hardcoded prototype credentials (per PM brief).
-const ADMIN_USER = "bodelhi";
-const ADMIN_PASS = "fujitec2026";
-
-interface AuthSession {
-  user: string;
-  loggedInAt: number;
-}
+import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import type { Session, User } from "@supabase/supabase-js";
+import { supabase } from "@/integrations/supabase/client";
 
 interface AuthValue {
-  session: AuthSession | null;
+  session: Session | null;
+  user: User | null;
+  profile: { displayName: string | null; region: string | null; roles: string[] } | null;
   isAuthenticated: boolean;
-  login: (user: string, pass: string) => { ok: true } | { ok: false; error: string };
-  logout: () => void;
+  loading: boolean;
+  login: (email: string, password: string) => Promise<{ ok: true } | { ok: false; error: string }>;
+  signup: (email: string, password: string) => Promise<{ ok: true; message: string } | { ok: false; error: string }>;
+  loginWithGoogle: () => Promise<{ ok: true } | { ok: false; error: string }>;
+  logout: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthValue | null>(null);
+const db = supabase as any;
 
-function loadSession(): AuthSession | null {
-  if (typeof window === "undefined") return null;
-  try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw) as AuthSession;
-    if (parsed?.user) return parsed;
-    return null;
-  } catch {
-    return null;
-  }
+async function ensureUserRecords(user: User) {
+  await db.from("profiles").upsert(
+    {
+      user_id: user.id,
+      display_name: user.user_metadata?.full_name ?? user.email?.split("@")[0] ?? "Operator",
+      region: "Delhi NCR",
+    },
+    { onConflict: "user_id" },
+  );
+  await db.from("user_roles").upsert(
+    { user_id: user.id, role: "operator" },
+    { onConflict: "user_id,role" },
+  );
+  await db.from("fleet_settings").upsert({ user_id: user.id }, { onConflict: "user_id" });
+}
+
+async function loadProfile(user: User | null) {
+  if (!user) return null;
+  await ensureUserRecords(user);
+  const [{ data: profile }, { data: roles }] = await Promise.all([
+    db.from("profiles").select("display_name, region").eq("user_id", user.id).maybeSingle(),
+    db.from("user_roles").select("role").eq("user_id", user.id),
+  ]);
+  return {
+    displayName: profile?.display_name ?? user.email?.split("@")[0] ?? null,
+    region: profile?.region ?? "Delhi NCR",
+    roles: Array.isArray(roles) ? roles.map((r: { role: string }) => r.role) : ["operator"],
+  };
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [session, setSession] = useState<AuthSession | null>(() => loadSession());
+  const [session, setSession] = useState<Session | null>(null);
+  const [profile, setProfile] = useState<AuthValue["profile"]>(null);
+  const [loading, setLoading] = useState(true);
 
-  // Cross-tab sync.
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    const onStorage = (e: StorageEvent) => {
-      if (e.key === STORAGE_KEY) setSession(loadSession());
+    let alive = true;
+
+    const { data: listener } = supabase.auth.onAuthStateChange((_, nextSession) => {
+      setSession(nextSession);
+      void loadProfile(nextSession?.user ?? null).then((nextProfile) => {
+        if (alive) setProfile(nextProfile);
+      });
+    });
+
+    void supabase.auth.getSession().then(({ data }) => {
+      if (!alive) return;
+      setSession(data.session ?? null);
+      return loadProfile(data.session?.user ?? null).then((nextProfile) => {
+        if (alive) setProfile(nextProfile);
+      });
+    }).finally(() => {
+      if (alive) setLoading(false);
+    });
+
+    return () => {
+      alive = false;
+      listener.subscription.unsubscribe();
     };
-    window.addEventListener("storage", onStorage);
-    return () => window.removeEventListener("storage", onStorage);
   }, []);
 
-  const value: AuthValue = {
+  const value = useMemo<AuthValue>(() => ({
     session,
+    user: session?.user ?? null,
+    profile,
     isAuthenticated: session !== null,
-    login: (user, pass) => {
-      if (user.trim() !== ADMIN_USER || pass !== ADMIN_PASS) {
-        return { ok: false, error: "Invalid credentials." };
-      }
-      const next: AuthSession = { user: user.trim(), loggedInAt: Date.now() };
-      setSession(next);
-      try {
-        window.localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
-      } catch {
-        // ignore quota
-      }
+    loading,
+    login: async (email, password) => {
+      const { data, error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
+      if (error) return { ok: false, error: error.message };
+      if (data.user) await ensureUserRecords(data.user);
       return { ok: true };
     },
-    logout: () => {
-      setSession(null);
-      try {
-        window.localStorage.removeItem(STORAGE_KEY);
-      } catch {
-        // ignore
-      }
+    signup: async (email, password) => {
+      const { data, error } = await supabase.auth.signUp({
+        email: email.trim(),
+        password,
+        options: { emailRedirectTo: window.location.origin },
+      });
+      if (error) return { ok: false, error: error.message };
+      if (data.user && data.session) await ensureUserRecords(data.user);
+      return { ok: true, message: data.session ? "Account created." : "Check your email to verify your account." };
     },
-  };
+    loginWithGoogle: async () => {
+      const { lovable } = await import("@/integrations/lovable/index");
+      const result = await lovable.auth.signInWithOAuth("google", { redirect_uri: window.location.origin });
+      if (result.error) return { ok: false, error: result.error.message ?? "Google sign-in failed." };
+      return { ok: true };
+    },
+    logout: async () => {
+      await supabase.auth.signOut();
+      setSession(null);
+      setProfile(null);
+    },
+  }), [loading, profile, session]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

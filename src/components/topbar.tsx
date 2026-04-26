@@ -20,13 +20,15 @@ import { toast } from "sonner";
 export function TopBar({ crumb }: { crumb: string }) {
   const [uploadOpen, setUploadOpen] = useState(false);
   const { source, units } = useFleetData();
-  const { session, logout } = useAuth();
+  const { user, profile, logout } = useAuth();
   const navigate = useNavigate();
 
-  const initials = (session?.user ?? "AD").slice(0, 2).toUpperCase();
+  const displayName = profile?.displayName ?? user?.email ?? "Operator";
+  const roleLabel = profile?.roles?.[0] ?? "operator";
+  const initials = displayName.slice(0, 2).toUpperCase();
 
   const handleLogout = () => {
-    logout();
+    void logout();
     toast.success("Signed out");
     void navigate({ to: "/login", replace: true });
   };
@@ -78,10 +80,10 @@ export function TopBar({ crumb }: { crumb: string }) {
           <DropdownMenuContent align="end" className="w-52">
             <DropdownMenuLabel className="text-[11px]">
               <div className="font-semibold text-foreground">
-                {session?.user ?? "Operator"}
+                {displayName}
               </div>
               <div className="text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
-                Admin · Fujitec Pulse
+                {roleLabel.charAt(0).toUpperCase() + roleLabel.slice(1)} · Fujitec Pulse
               </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />

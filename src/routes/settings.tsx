@@ -75,7 +75,7 @@ function SettingsBody() {
   };
 
   const onLogout = () => {
-    logout();
+    void logout();
     toast.success("Signed out");
     void navigate({ to: "/login", replace: true });
   };

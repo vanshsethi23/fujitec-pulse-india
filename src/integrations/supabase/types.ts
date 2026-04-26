@@ -14,16 +14,306 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      fleet_settings: {
+        Row: {
+          average_ticket_inr: number
+          created_at: string
+          critical_shutdown_limit: number
+          id: string
+          rope_replacement_trigger: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          average_ticket_inr?: number
+          created_at?: string
+          critical_shutdown_limit?: number
+          id?: string
+          rope_replacement_trigger?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          average_ticket_inr?: number
+          created_at?: string
+          critical_shutdown_limit?: number
+          id?: string
+          rope_replacement_trigger?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      fleet_telemetry_rows: {
+        Row: {
+          created_at: string
+          current_draw_a: number | null
+          door_cycles_hour: number | null
+          door_open_close_ms: number | null
+          elevator_id: string
+          id: string
+          install_year: number | null
+          leveling_accuracy_mm: number | null
+          main_rope_condition: number | null
+          motor_temp_c: number | null
+          recorded_at: string | null
+          source_row: Json
+          target_state: string | null
+          timestamp_text: string | null
+          updated_at: string
+          user_id: string
+          vibration_rms: number | null
+        }
+        Insert: {
+          created_at?: string
+          current_draw_a?: number | null
+          door_cycles_hour?: number | null
+          door_open_close_ms?: number | null
+          elevator_id: string
+          id?: string
+          install_year?: number | null
+          leveling_accuracy_mm?: number | null
+          main_rope_condition?: number | null
+          motor_temp_c?: number | null
+          recorded_at?: string | null
+          source_row?: Json
+          target_state?: string | null
+          timestamp_text?: string | null
+          updated_at?: string
+          user_id: string
+          vibration_rms?: number | null
+        }
+        Update: {
+          created_at?: string
+          current_draw_a?: number | null
+          door_cycles_hour?: number | null
+          door_open_close_ms?: number | null
+          elevator_id?: string
+          id?: string
+          install_year?: number | null
+          leveling_accuracy_mm?: number | null
+          main_rope_condition?: number | null
+          motor_temp_c?: number | null
+          recorded_at?: string | null
+          source_row?: Json
+          target_state?: string | null
+          timestamp_text?: string | null
+          updated_at?: string
+          user_id?: string
+          vibration_rms?: number | null
+        }
+        Relationships: []
+      }
+      fleet_units: {
+        Row: {
+          brake_wear: number | null
+          callbacks_90d: number | null
+          controller_type: string | null
+          created_at: string
+          customer_name: string | null
+          door_cycles: number | null
+          downtime_hours_90d: number | null
+          health_score: number | null
+          id: string
+          install_year: number | null
+          lead_status: string | null
+          location: string | null
+          main_rope_condition: number | null
+          region: string | null
+          source_row: Json
+          trips_per_day: number | null
+          unit_id: string
+          updated_at: string
+          uploaded_at: string
+          user_id: string
+          vibration_mm_s: number | null
+        }
+        Insert: {
+          brake_wear?: number | null
+          callbacks_90d?: number | null
+          controller_type?: string | null
+          created_at?: string
+          customer_name?: string | null
+          door_cycles?: number | null
+          downtime_hours_90d?: number | null
+          health_score?: number | null
+          id?: string
+          install_year?: number | null
+          lead_status?: string | null
+          location?: string | null
+          main_rope_condition?: number | null
+          region?: string | null
+          source_row?: Json
+          trips_per_day?: number | null
+          unit_id: string
+          updated_at?: string
+          uploaded_at?: string
+          user_id: string
+          vibration_mm_s?: number | null
+        }
+        Update: {
+          brake_wear?: number | null
+          callbacks_90d?: number | null
+          controller_type?: string | null
+          created_at?: string
+          customer_name?: string | null
+          door_cycles?: number | null
+          downtime_hours_90d?: number | null
+          health_score?: number | null
+          id?: string
+          install_year?: number | null
+          lead_status?: string | null
+          location?: string | null
+          main_rope_condition?: number | null
+          region?: string | null
+          source_row?: Json
+          trips_per_day?: number | null
+          unit_id?: string
+          updated_at?: string
+          uploaded_at?: string
+          user_id?: string
+          vibration_mm_s?: number | null
+        }
+        Relationships: []
+      }
+      generated_artifacts: {
+        Row: {
+          artifact_type: string
+          created_at: string
+          id: string
+          payload: Json
+          title: string
+          unit_id: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          artifact_type: string
+          created_at?: string
+          id?: string
+          payload?: Json
+          title: string
+          unit_id?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          artifact_type?: string
+          created_at?: string
+          id?: string
+          payload?: Json
+          title?: string
+          unit_id?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          display_name: string | null
+          id: string
+          region: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          region?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          region?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      service_tickets: {
+        Row: {
+          created_at: string
+          description: string | null
+          due_date: string | null
+          id: string
+          owner: string | null
+          priority: string
+          status: string
+          title: string
+          unit_id: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          owner?: string | null
+          priority?: string
+          status?: string
+          title: string
+          unit_id?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          owner?: string | null
+          priority?: string
+          status?: string
+          title?: string
+          unit_id?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "operator" | "viewer"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +440,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "operator", "viewer"],
+    },
   },
 } as const
