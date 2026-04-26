@@ -592,7 +592,7 @@ function ReadinessChart({
     <div className="rounded-md border border-border bg-card p-4">
       <div className="flex items-center justify-between">
         <h3 className="flex items-center gap-2 text-sm font-semibold text-foreground">
-          <BarIcon className="h-3.5 w-3.5 text-brand" />
+          <BarChart3 className="h-3.5 w-3.5 text-brand" />
           Modernization Readiness — by age bracket
         </h3>
         <span className="text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
