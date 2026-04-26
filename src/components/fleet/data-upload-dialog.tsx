@@ -5,6 +5,7 @@ import {
   ArrowLeft,
   CheckCircle2,
   FileSpreadsheet,
+  Loader2,
   RotateCcw,
   Upload,
   X,
@@ -27,10 +28,11 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
 import {
   REQUIRED_CSV_HEADERS,
-  csvRowsToUnits,
+  csvRowsToUnitsAsync,
   validateCsvHeaders,
   type CsvRow,
 } from "@/lib/fleet";
