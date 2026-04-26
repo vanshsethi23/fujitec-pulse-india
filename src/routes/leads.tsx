@@ -18,7 +18,6 @@ import {
   formatInrCompact,
   isModernizationLead,
   leadReasons,
-  THRESHOLDS,
   type ScoredUnit,
 } from "@/lib/fleet";
 import { useFleetData } from "@/components/fleet/fleet-data-context";
@@ -94,7 +93,7 @@ function ReasonChips({ reasons }: { reasons: string[] }) {
 
 function LeadsBody() {
   const navigate = useNavigate();
-  const { units, source, fileName, setSelectedUnitId } = useFleetData();
+  const { units, source, fileName, setSelectedUnitId, averageTicketInr } = useFleetData();
   const [query, setQuery] = useState("");
   const [sortDesc, setSortDesc] = useState(true);
   const [proposalUnit, setProposalUnit] = useState<ScoredUnit | null>(null);
@@ -127,7 +126,7 @@ function LeadsBody() {
     return rows;
   }, [enriched, query, sortDesc]);
 
-  const revenue = leads.length * THRESHOLDS.ticketInr;
+  const revenue = leads.length * averageTicketInr;
   const avgScore = leads.length
     ? leads.reduce((s, u) => s + u.score, 0) / leads.length
     : 0;
@@ -157,14 +156,14 @@ function LeadsBody() {
           label="Qualified Leads"
           value={leads.length.toString()}
           accent="warning"
-          sub="Pre-2011 install OR Main Rope Condition < 96%"
+          sub="Pre-2006 install OR Main Rope Condition < 96%"
         />
         <SummaryCard
           icon={IndianRupee}
           label="Revenue Opportunity"
           value={formatInrCompact(revenue)}
           accent="healthy"
-          sub={`${leads.length} × ₹27.5L avg ticket`}
+          sub={`${leads.length} × ${formatInrCompact(averageTicketInr)} ATV`}
         />
         <SummaryCard
           icon={TrendingUp}
