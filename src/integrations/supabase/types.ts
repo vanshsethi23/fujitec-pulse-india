@@ -44,6 +44,66 @@ export type Database = {
         }
         Relationships: []
       }
+      fleet_telemetry_rows: {
+        Row: {
+          created_at: string
+          current_draw_a: number | null
+          door_cycles_hour: number | null
+          door_open_close_ms: number | null
+          elevator_id: string
+          id: string
+          install_year: number | null
+          leveling_accuracy_mm: number | null
+          main_rope_condition: number | null
+          motor_temp_c: number | null
+          recorded_at: string | null
+          source_row: Json
+          target_state: string | null
+          timestamp_text: string | null
+          updated_at: string
+          user_id: string
+          vibration_rms: number | null
+        }
+        Insert: {
+          created_at?: string
+          current_draw_a?: number | null
+          door_cycles_hour?: number | null
+          door_open_close_ms?: number | null
+          elevator_id: string
+          id?: string
+          install_year?: number | null
+          leveling_accuracy_mm?: number | null
+          main_rope_condition?: number | null
+          motor_temp_c?: number | null
+          recorded_at?: string | null
+          source_row?: Json
+          target_state?: string | null
+          timestamp_text?: string | null
+          updated_at?: string
+          user_id: string
+          vibration_rms?: number | null
+        }
+        Update: {
+          created_at?: string
+          current_draw_a?: number | null
+          door_cycles_hour?: number | null
+          door_open_close_ms?: number | null
+          elevator_id?: string
+          id?: string
+          install_year?: number | null
+          leveling_accuracy_mm?: number | null
+          main_rope_condition?: number | null
+          motor_temp_c?: number | null
+          recorded_at?: string | null
+          source_row?: Json
+          target_state?: string | null
+          timestamp_text?: string | null
+          updated_at?: string
+          user_id?: string
+          vibration_rms?: number | null
+        }
+        Relationships: []
+      }
       fleet_units: {
         Row: {
           brake_wear: number | null
