@@ -138,9 +138,13 @@ export function DataUploadDialog({ open, onOpenChange }: DataUploadDialogProps) 
         reject("No valid elevators could be derived from the file.");
         return;
       }
-      await setUnits(units, parsed.fileName, parsed.rows);
+      void setUnits(units, parsed.fileName, parsed.rows).catch((e) => {
+        toast.error("Cloud save is still pending.", {
+          description: e instanceof Error ? e.message : "The dataset remains visible locally for this session.",
+        });
+      });
       toast.success(`Successfully ingested data for ${units.length} elevators.`, {
-        description: `${parsed.fileName} · ${parsed.rows.length.toLocaleString()} telemetry rows`,
+        description: `${parsed.fileName} · ${parsed.rows.length.toLocaleString()} telemetry rows · saving to cloud`,
       });
       setIngesting(false);
       setParsed(null);
