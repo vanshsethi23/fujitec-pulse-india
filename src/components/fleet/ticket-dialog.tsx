@@ -103,7 +103,7 @@ export function TicketDialog({ unit, open, onOpenChange }: Props) {
     setNotes(buildNotes(unit));
   }, [open, unit]);
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!unit) return;
     const trimmedAssignee = assignee.trim();
     if (!trimmedAssignee) {
@@ -130,12 +130,18 @@ export function TicketDialog({ unit, open, onOpenChange }: Props) {
         Leveling_Accuracy_mm: unit.Leveling_Accuracy_mm,
       },
     };
-    addTicket(ticket);
-    toast.success(`Ticket ${ticket.id} issued`, {
-      description: `${unit.Unit_ID} → ${trimmedAssignee} · ${priority}`,
-    });
-    onOpenChange(false);
-    navigate({ to: "/tickets" });
+    try {
+      await addTicket(ticket);
+      toast.success(`Ticket ${ticket.id} issued`, {
+        description: `${unit.Unit_ID} → ${trimmedAssignee} · ${priority}`,
+      });
+      onOpenChange(false);
+      navigate({ to: "/tickets" });
+    } catch (e) {
+      toast.error("Ticket could not be saved.", {
+        description: e instanceof Error ? e.message : "Please try again.",
+      });
+    }
   };
 
   return (
