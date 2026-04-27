@@ -288,6 +288,11 @@ export function FleetDataProvider({ children }: { children: ReactNode }) {
   };
 
   useEffect(() => {
+    if (!isAuthenticated || user) return;
+    setCloudReady(false);
+  }, [isAuthenticated, user]);
+
+  useEffect(() => {
     if (typeof document === "undefined") return;
     document.documentElement.classList.toggle("light", theme === "light");
     try { window.localStorage.setItem(THEME_KEY, theme); } catch { /* ignore */ }
