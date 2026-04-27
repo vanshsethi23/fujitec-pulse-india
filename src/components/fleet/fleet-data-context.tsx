@@ -205,6 +205,22 @@ async function persistFleetDataset(userId: string, next: ScoredUnit[], name: str
   );
 }
 
+async function loadTelemetryRows(userId: string, isAlive: () => boolean): Promise<CsvRow[]> {
+  const rows: CsvRow[] = [];
+  for (let from = 0; isAlive(); from += 1000) {
+    const { data, error } = await db
+      .from("fleet_telemetry_rows")
+      .select("source_row")
+      .eq("user_id", userId)
+      .order("recorded_at", { ascending: true })
+      .range(from, from + 999);
+    if (error || !Array.isArray(data) || data.length === 0) break;
+    rows.push(...data.map((r: any) => r.source_row as CsvRow));
+    if (data.length < 1000) break;
+  }
+  return rows;
+}
+
 function parseTicketPayload(description: string | null) {
   if (!description) return {};
   try {
