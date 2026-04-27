@@ -32,7 +32,7 @@ function SettingsPage() {
 }
 
 function SettingsBody() {
-  const { thresholds, setThresholds, averageTicketInr, setAverageTicketInr, reset, theme, toggleTheme } = useFleetData();
+  const { thresholds, setThresholds, averageTicketInr, setAverageTicketInr, reset, clearLocalState, theme, toggleTheme } = useFleetData();
   const { logout } = useAuth();
   const navigate = useNavigate();
   const [warn, setWarn] = useState(String(thresholds.ropeWarningBelow));
@@ -74,10 +74,11 @@ function SettingsBody() {
     toast.success("System reset · archetype dataset restored");
   };
 
-  const onLogout = () => {
-    void logout();
+  const onLogout = async () => {
+    await logout();
+    clearLocalState();
     toast.success("Signed out");
-    void navigate({ to: "/login", replace: true });
+    await navigate({ to: "/login", replace: true });
   };
 
   return (
