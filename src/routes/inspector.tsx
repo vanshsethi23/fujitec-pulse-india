@@ -87,6 +87,8 @@ const THRESH = {
   levelingMm: 10,
 } as const;
 
+const EXPECTED_PULSE_SAMPLES = 720;
+
 const STATUS_META: Record<UnitStatus, { label: string; cls: string; dot: string }> = {
   healthy: {
     label: "Normal",
@@ -128,12 +130,9 @@ function InspectorBody() {
     [unit, getTimeseries],
   );
 
-  // Last 30 days only
   const series = useMemo(() => {
     if (!fullSeries.length) return [];
-    const cutoff = Date.now() - 30 * 24 * 60 * 60 * 1000;
-    const trimmed = fullSeries.filter((s) => s.t >= cutoff);
-    return trimmed.length ? trimmed : fullSeries;
+    return fullSeries.slice(-EXPECTED_PULSE_SAMPLES);
   }, [fullSeries]);
 
   return (
