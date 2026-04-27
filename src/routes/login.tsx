@@ -24,7 +24,7 @@ export const Route = createFileRoute("/login")({
 });
 
 function LoginPage() {
-  const { login, signup, loginWithGoogle, isAuthenticated, loading } = useAuth();
+  const { login, signup, isAuthenticated, loading } = useAuth();
   const navigate = useNavigate();
   const search = Route.useSearch();
   const [email, setEmail] = useState("");
@@ -53,14 +53,6 @@ function LoginPage() {
       setMessage(result.message);
     }
     if (mode === "signin") void navigate({ to: search.redirect ?? "/", replace: true });
-  };
-
-  const onGoogle = async () => {
-    setError(null);
-    setBusy(true);
-    const result = await loginWithGoogle();
-    setBusy(false);
-    if (!result.ok) setError(result.error);
   };
 
   return (
@@ -112,9 +104,6 @@ function LoginPage() {
 
             <Button type="submit" disabled={busy} className="h-10 w-full bg-brand text-[13px] font-semibold text-brand-foreground hover:bg-brand/90">
               {busy ? <><Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />Authenticating…</> : <>{mode === "signin" ? "Sign in" : "Create secure account"}<ArrowRight className="ml-2 h-3.5 w-3.5" /></>}
-            </Button>
-            <Button type="button" variant="outline" disabled={busy} onClick={onGoogle} className="h-10 w-full border-border bg-surface text-[13px] text-foreground">
-              Continue with Google
             </Button>
           </div>
         </form>

@@ -1,5 +1,5 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
-import { useMemo } from "react";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { useEffect, useMemo } from "react";
 import { Activity, AlertTriangle, Building2, FileBarChart, IndianRupee, Target } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { KpiCard } from "@/components/fleet/kpi-card";
@@ -9,6 +9,7 @@ import { UnitsTable } from "@/components/fleet/units-table";
 import { Button } from "@/components/ui/button";
 import { summarize, formatInrCompact } from "@/lib/fleet";
 import { useFleetData } from "@/components/fleet/fleet-data-context";
+import { useAuth } from "@/components/auth/auth-context";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -35,6 +36,13 @@ function spark(seed: number, base: number, drift: number) {
 }
 
 function FleetOverview() {
+  const { isAuthenticated, loading } = useAuth();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (!loading && !isAuthenticated) void navigate({ to: "/login", replace: true });
+  }, [isAuthenticated, loading, navigate]);
+
   return (
     <AppShell crumb="Fleet Overview">
       <FleetOverviewBody />

@@ -10,7 +10,6 @@ interface AuthValue {
   loading: boolean;
   login: (email: string, password: string) => Promise<{ ok: true } | { ok: false; error: string }>;
   signup: (email: string, password: string) => Promise<{ ok: true; message: string } | { ok: false; error: string }>;
-  loginWithGoogle: () => Promise<{ ok: true } | { ok: false; error: string }>;
   logout: () => Promise<void>;
 }
 
@@ -99,12 +98,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (error) return { ok: false, error: error.message };
       if (data.user && data.session) await ensureUserRecords(data.user);
       return { ok: true, message: data.session ? "Account created." : "Check your email to verify your account." };
-    },
-    loginWithGoogle: async () => {
-      const { lovable } = await import("@/integrations/lovable/index");
-      const result = await lovable.auth.signInWithOAuth("google", { redirect_uri: window.location.origin });
-      if (result.error) return { ok: false, error: result.error.message ?? "Google sign-in failed." };
-      return { ok: true };
     },
     logout: async () => {
       await supabase.auth.signOut();

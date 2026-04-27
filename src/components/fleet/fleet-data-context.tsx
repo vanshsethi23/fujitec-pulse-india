@@ -44,6 +44,7 @@ interface FleetDataValue {
   fileName: string | null;
   setUnits: (units: ScoredUnit[], fileName: string, rawRows: CsvRow[]) => void;
   reset: () => void;
+  clearLocalState: () => void;
   getTimeseries: (unitId: string) => TelemetryPoint[];
   selectedUnitId: string | null;
   setSelectedUnitId: (id: string | null) => void;
@@ -221,6 +222,19 @@ export function FleetDataProvider({ children }: { children: ReactNode }) {
   const [theme, setTheme] = useState<"dark" | "light">(() => loadTheme());
   const [cloudReady, setCloudReady] = useState(false);
 
+  const clearLocalState = () => {
+    setUnitsState(initial);
+    setSource("mock");
+    setFileName(null);
+    setRawRows([]);
+    setSelectedUnitId(null);
+    setTickets([]);
+    setThresholdsState(DEFAULT_THRESHOLDS);
+    setThresholdOverrides(DEFAULT_THRESHOLDS);
+    setAverageTicketInrState(DEFAULT_AVERAGE_TICKET_INR);
+    setCloudReady(false);
+  };
+
   useEffect(() => {
     if (typeof document === "undefined") return;
     document.documentElement.classList.toggle("light", theme === "light");
@@ -324,6 +338,7 @@ export function FleetDataProvider({ children }: { children: ReactNode }) {
       ]);
       try { if (typeof window !== "undefined") window.localStorage.removeItem(STORAGE_KEY); } catch { /* ignore */ }
     },
+    clearLocalState,
     getTimeseries: (unitId) => seriesByUnit.get(unitId) ?? (units.find((u) => u.Unit_ID === unitId) ? synthesizeSeries(units.find((u) => u.Unit_ID === unitId)!) : []),
     selectedUnitId, setSelectedUnitId, tickets,
     addTicket: (ticket) => {
