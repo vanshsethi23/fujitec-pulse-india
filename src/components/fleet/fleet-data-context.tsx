@@ -287,18 +287,6 @@ export function FleetDataProvider({ children }: { children: ReactNode }) {
         db.from("fleet_units").select("*").eq("user_id", user.id).order("unit_id", { ascending: true }),
         db.from("service_tickets").select("*, ticket_code").eq("user_id", user.id).order("created_at", { ascending: false }),
       ]);
-      const telemetryRows: any[] = [];
-      for (let from = 0; ; from += 1000) {
-        const { data } = await db
-          .from("fleet_telemetry_rows")
-          .select("source_row")
-          .eq("user_id", user.id)
-          .order("recorded_at", { ascending: true })
-          .range(from, from + 999);
-        if (!Array.isArray(data) || data.length === 0) break;
-        telemetryRows.push(...data);
-        if (data.length < 1000) break;
-      }
       if (!alive) return;
       const nextThresholds = {
         ropeWarningBelow: Number(settings?.rope_replacement_trigger ?? DEFAULT_THRESHOLDS.ropeWarningBelow),
@@ -308,11 +296,14 @@ export function FleetDataProvider({ children }: { children: ReactNode }) {
       setThresholdsState(nextThresholds);
       setAverageTicketInrState(Number(settings?.average_ticket_inr ?? DEFAULT_AVERAGE_TICKET_INR));
       setTickets(Array.isArray(ticketRows) ? ticketRows.map(dbToTicket) : []);
-      setRawRows(Array.isArray(telemetryRows) ? telemetryRows.map((r: any) => r.source_row as CsvRow) : []);
       if (Array.isArray(unitRows) && unitRows.length) {
         setUnitsState(unitRows.map(dbToUnit));
         setSource("csv");
         setFileName(settings?.active_dataset_name ?? "Cloud Database");
+        setCloudReady(true);
+        void loadTelemetryRows(user.id, () => alive).then((rows) => {
+          if (alive) setRawRows(rows);
+        });
       } else {
         const legacy = readLegacyFleet();
         if (legacy) {
@@ -320,15 +311,17 @@ export function FleetDataProvider({ children }: { children: ReactNode }) {
           setRawRows(legacy.rawRows);
           setFileName(legacy.fileName);
           setSource("csv");
-          await persistFleetDataset(user.id, legacy.units, legacy.fileName ?? "Imported CSV", legacy.rawRows);
+          setCloudReady(true);
+          void persistFleetDataset(user.id, legacy.units, legacy.fileName ?? "Imported CSV", legacy.rawRows);
           window.localStorage.removeItem(STORAGE_KEY);
         } else {
           setUnitsState(initial);
           setSource("mock");
           setFileName(null);
+          setRawRows([]);
+          setCloudReady(true);
         }
       }
-      setCloudReady(true);
     })();
     return () => { alive = false; };
   }, [initial, isAuthenticated, user]);
