@@ -352,17 +352,9 @@ export function FleetDataProvider({ children }: { children: ReactNode }) {
 
   const value: FleetDataValue = {
     units, source, fileName,
-    setUnits: (next, name, rows) => {
+    setUnits: async (next, name, rows) => {
       setUnitsState(next); setSource("csv"); setFileName(name); setRawRows(rows);
-      if (user) void (async () => {
-        await Promise.all([
-          db.from("fleet_units").delete().eq("user_id", user.id),
-          db.from("fleet_telemetry_rows").delete().eq("user_id", user.id),
-        ]);
-        await db.from("fleet_units").insert(next.map((u) => unitToDb(user.id, u)));
-        const telemetry = rows.filter((r) => r.Elevator_ID).map((r) => rowToTelemetryDb(user.id, r));
-        for (let i = 0; i < telemetry.length; i += 1000) await db.from("fleet_telemetry_rows").insert(telemetry.slice(i, i + 1000));
-      })();
+      if (user) await persistFleetDataset(user.id, next, name, rows);
     },
     reset: () => {
       setUnitsState(initial); setSource("mock"); setFileName(null); setRawRows([]); setTickets([]);
@@ -376,9 +368,9 @@ export function FleetDataProvider({ children }: { children: ReactNode }) {
     clearLocalState,
     getTimeseries: (unitId) => seriesByUnit.get(unitId) ?? (units.find((u) => u.Unit_ID === unitId) ? synthesizeSeries(units.find((u) => u.Unit_ID === unitId)!) : []),
     selectedUnitId, setSelectedUnitId, tickets,
-    addTicket: (ticket) => {
-      setTickets((cur) => [ticket, ...cur]);
-      if (user) void db.from("service_tickets").upsert(ticketToDb(user.id, ticket));
+    addTicket: async (ticket) => {
+      if (user) await expectOk(db.from("service_tickets").insert(ticketToDb(user.id, ticket)), "Create service ticket");
+      setTickets((cur) => [ticket, ...cur.filter((t) => t.id !== ticket.id)]);
     },
     updateTicket: (id, patch) => {
       setTickets((cur) => cur.map((t) => (t.id === id ? { ...t, ...patch } : t)));
