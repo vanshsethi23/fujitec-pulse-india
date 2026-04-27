@@ -433,6 +433,7 @@ function HealthGauge({ score, status }: { score: number; status: UnitStatus }) {
 
 function PulseGrid({ series }: { series: TelemetryPoint[] }) {
   const empty = series.length === 0;
+  const dateTicks = useMemo(() => buildDateTicks(series), [series]);
   return (
     <section>
       <div className="mb-3 flex items-end justify-between">
@@ -476,11 +477,15 @@ function PulseGrid({ series }: { series: TelemetryPoint[] }) {
                 </defs>
                 <CartesianGrid stroke="var(--border)" strokeDasharray="3 3" vertical={false} />
                 <XAxis
-                  dataKey="label"
+                  dataKey="t"
+                  type="number"
+                  scale="time"
+                  domain={["dataMin", "dataMax"]}
+                  ticks={dateTicks}
+                  tickFormatter={formatAxisDate}
                   tick={{ fill: "var(--muted-foreground)", fontSize: 10 }}
                   tickLine={false}
                   axisLine={{ stroke: "var(--border)" }}
-                  minTickGap={32}
                 />
                 <YAxis
                   tick={{ fill: "var(--muted-foreground)", fontSize: 10 }}
@@ -530,11 +535,15 @@ function PulseGrid({ series }: { series: TelemetryPoint[] }) {
               >
                 <CartesianGrid stroke="var(--border)" strokeDasharray="3 3" vertical={false} />
                 <XAxis
-                  dataKey="label"
+                  dataKey="t"
+                  type="number"
+                  scale="time"
+                  domain={["dataMin", "dataMax"]}
+                  ticks={dateTicks}
+                  tickFormatter={formatAxisDate}
                   tick={{ fill: "var(--muted-foreground)", fontSize: 10 }}
                   tickLine={false}
                   axisLine={{ stroke: "var(--border)" }}
-                  minTickGap={32}
                 />
                 <YAxis
                   tick={{ fill: "var(--muted-foreground)", fontSize: 10 }}
@@ -585,11 +594,15 @@ function PulseGrid({ series }: { series: TelemetryPoint[] }) {
               >
                 <CartesianGrid stroke="var(--border)" strokeDasharray="3 3" vertical={false} />
                 <XAxis
-                  dataKey="label"
+                  dataKey="t"
+                  type="number"
+                  scale="time"
+                  domain={["dataMin", "dataMax"]}
+                  ticks={dateTicks}
+                  tickFormatter={formatAxisDate}
                   tick={{ fill: "var(--muted-foreground)", fontSize: 10 }}
                   tickLine={false}
                   axisLine={{ stroke: "var(--border)" }}
-                  minTickGap={32}
                 />
                 <YAxis
                   tick={{ fill: "var(--muted-foreground)", fontSize: 10 }}
@@ -640,11 +653,15 @@ function PulseGrid({ series }: { series: TelemetryPoint[] }) {
               >
                 <CartesianGrid stroke="var(--border)" strokeDasharray="3 3" vertical={false} />
                 <XAxis
-                  dataKey="label"
+                  dataKey="t"
+                  type="number"
+                  scale="time"
+                  domain={["dataMin", "dataMax"]}
+                  ticks={dateTicks}
+                  tickFormatter={formatAxisDate}
                   tick={{ fill: "var(--muted-foreground)", fontSize: 10 }}
                   tickLine={false}
                   axisLine={{ stroke: "var(--border)" }}
-                  minTickGap={32}
                 />
                 <YAxis
                   tick={{ fill: "var(--muted-foreground)", fontSize: 10 }}
