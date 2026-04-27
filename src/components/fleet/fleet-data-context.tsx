@@ -42,14 +42,14 @@ interface FleetDataValue {
   units: ScoredUnit[];
   source: "mock" | "csv";
   fileName: string | null;
-  setUnits: (units: ScoredUnit[], fileName: string, rawRows: CsvRow[]) => void;
+  setUnits: (units: ScoredUnit[], fileName: string, rawRows: CsvRow[]) => Promise<void>;
   reset: () => void;
   clearLocalState: () => void;
   getTimeseries: (unitId: string) => TelemetryPoint[];
   selectedUnitId: string | null;
   setSelectedUnitId: (id: string | null) => void;
   tickets: ServiceTicket[];
-  addTicket: (ticket: ServiceTicket) => void;
+  addTicket: (ticket: ServiceTicket) => Promise<void>;
   updateTicket: (id: string, patch: Partial<ServiceTicket>) => void;
   removeTicket: (id: string) => void;
   thresholds: ThresholdOverrides;
@@ -104,6 +104,7 @@ const STORAGE_KEY = "fujitec-pulse:fleet-v2";
 const THEME_KEY = "fujitec-pulse:theme-v1";
 const DEFAULT_AVERAGE_TICKET_INR = 1_450_000;
 const DEFAULT_THRESHOLDS: ThresholdOverrides = { ropeWarningBelow: 96, ropeCriticalBelow: 94 };
+const DB_BATCH_SIZE = 500;
 
 function loadTheme(): "dark" | "light" {
   if (typeof window === "undefined") return "dark";
@@ -178,10 +179,45 @@ function rowToTelemetryDb(userId: string, row: CsvRow) {
   };
 }
 
+async function expectOk<T extends { error?: { message: string } | null }>(promise: PromiseLike<T>, label: string): Promise<T> {
+  const result = await promise;
+  if (result.error) throw new Error(`${label}: ${result.error.message}`);
+  return result;
+}
+
+async function insertInBatches(table: "fleet_units" | "fleet_telemetry_rows", records: any[], label: string) {
+  for (let i = 0; i < records.length; i += DB_BATCH_SIZE) {
+    await expectOk(db.from(table).insert(records.slice(i, i + DB_BATCH_SIZE)), label);
+  }
+}
+
+async function persistFleetDataset(userId: string, next: ScoredUnit[], name: string, rows: CsvRow[]) {
+  const telemetry = rows.filter((r) => String(r.Elevator_ID ?? "").trim()).map((r) => rowToTelemetryDb(userId, r));
+  await Promise.all([
+    expectOk(db.from("fleet_units").delete().eq("user_id", userId), "Clear saved units"),
+    expectOk(db.from("fleet_telemetry_rows").delete().eq("user_id", userId), "Clear saved telemetry"),
+  ]);
+  await insertInBatches("fleet_units", next.map((u) => unitToDb(userId, u)), "Save fleet units");
+  await insertInBatches("fleet_telemetry_rows", telemetry, "Save telemetry rows");
+  await expectOk(
+    db.from("fleet_settings").upsert({ user_id: userId, active_dataset_name: name }, { onConflict: "user_id" }),
+    "Save active dataset name",
+  );
+}
+
+function parseTicketPayload(description: string | null) {
+  if (!description) return {};
+  try {
+    return JSON.parse(description);
+  } catch {
+    return { notes: description };
+  }
+}
+
 function dbToTicket(row: any): ServiceTicket {
-  const payload = row.description ? JSON.parse(row.description) : {};
+  const payload = parseTicketPayload(row.description);
   return {
-    id: row.id,
+    id: row.ticket_code ?? row.id,
     unitId: row.unit_id ?? payload.unitId ?? "",
     site: payload.site ?? "Imported Site",
     city: payload.city ?? "—",
@@ -197,8 +233,8 @@ function dbToTicket(row: any): ServiceTicket {
 
 function ticketToDb(userId: string, ticket: ServiceTicket) {
   return {
-    id: ticket.id,
     user_id: userId,
+    ticket_code: ticket.id,
     unit_id: ticket.unitId,
     title: ticket.summary,
     priority: ticket.priority,
@@ -247,9 +283,9 @@ export function FleetDataProvider({ children }: { children: ReactNode }) {
     setCloudReady(false);
     void (async () => {
       const [{ data: settings }, { data: unitRows }, { data: ticketRows }] = await Promise.all([
-        db.from("fleet_settings").select("rope_replacement_trigger, critical_shutdown_limit, average_ticket_inr").eq("user_id", user.id).maybeSingle(),
+        db.from("fleet_settings").select("rope_replacement_trigger, critical_shutdown_limit, average_ticket_inr, active_dataset_name").eq("user_id", user.id).maybeSingle(),
         db.from("fleet_units").select("*").eq("user_id", user.id).order("unit_id", { ascending: true }),
-        db.from("service_tickets").select("*").eq("user_id", user.id).order("created_at", { ascending: false }),
+        db.from("service_tickets").select("*, ticket_code").eq("user_id", user.id).order("created_at", { ascending: false }),
       ]);
       const telemetryRows: any[] = [];
       for (let from = 0; ; from += 1000) {
@@ -276,7 +312,7 @@ export function FleetDataProvider({ children }: { children: ReactNode }) {
       if (Array.isArray(unitRows) && unitRows.length) {
         setUnitsState(unitRows.map(dbToUnit));
         setSource("csv");
-        setFileName("Cloud Database");
+        setFileName(settings?.active_dataset_name ?? "Cloud Database");
       } else {
         const legacy = readLegacyFleet();
         if (legacy) {
@@ -284,8 +320,7 @@ export function FleetDataProvider({ children }: { children: ReactNode }) {
           setRawRows(legacy.rawRows);
           setFileName(legacy.fileName);
           setSource("csv");
-          await db.from("fleet_units").upsert(legacy.units.map((u) => unitToDb(user.id, u)), { onConflict: "user_id,unit_id" });
-          if (legacy.rawRows.length) await db.from("fleet_telemetry_rows").insert(legacy.rawRows.filter((r) => r.Elevator_ID).map((r) => rowToTelemetryDb(user.id, r)));
+          await persistFleetDataset(user.id, legacy.units, legacy.fileName ?? "Imported CSV", legacy.rawRows);
           window.localStorage.removeItem(STORAGE_KEY);
         } else {
           setUnitsState(initial);
@@ -317,17 +352,9 @@ export function FleetDataProvider({ children }: { children: ReactNode }) {
 
   const value: FleetDataValue = {
     units, source, fileName,
-    setUnits: (next, name, rows) => {
+    setUnits: async (next, name, rows) => {
       setUnitsState(next); setSource("csv"); setFileName(name); setRawRows(rows);
-      if (user) void (async () => {
-        await Promise.all([
-          db.from("fleet_units").delete().eq("user_id", user.id),
-          db.from("fleet_telemetry_rows").delete().eq("user_id", user.id),
-        ]);
-        await db.from("fleet_units").insert(next.map((u) => unitToDb(user.id, u)));
-        const telemetry = rows.filter((r) => r.Elevator_ID).map((r) => rowToTelemetryDb(user.id, r));
-        for (let i = 0; i < telemetry.length; i += 1000) await db.from("fleet_telemetry_rows").insert(telemetry.slice(i, i + 1000));
-      })();
+      if (user) await persistFleetDataset(user.id, next, name, rows);
     },
     reset: () => {
       setUnitsState(initial); setSource("mock"); setFileName(null); setRawRows([]); setTickets([]);
@@ -335,26 +362,27 @@ export function FleetDataProvider({ children }: { children: ReactNode }) {
         db.from("fleet_units").delete().eq("user_id", user.id),
         db.from("fleet_telemetry_rows").delete().eq("user_id", user.id),
         db.from("service_tickets").delete().eq("user_id", user.id),
+        db.from("fleet_settings").upsert({ user_id: user.id, active_dataset_name: null }, { onConflict: "user_id" }),
       ]);
       try { if (typeof window !== "undefined") window.localStorage.removeItem(STORAGE_KEY); } catch { /* ignore */ }
     },
     clearLocalState,
     getTimeseries: (unitId) => seriesByUnit.get(unitId) ?? (units.find((u) => u.Unit_ID === unitId) ? synthesizeSeries(units.find((u) => u.Unit_ID === unitId)!) : []),
     selectedUnitId, setSelectedUnitId, tickets,
-    addTicket: (ticket) => {
-      setTickets((cur) => [ticket, ...cur]);
-      if (user) void db.from("service_tickets").upsert(ticketToDb(user.id, ticket));
+    addTicket: async (ticket) => {
+      if (user) await expectOk(db.from("service_tickets").insert(ticketToDb(user.id, ticket)), "Create service ticket");
+      setTickets((cur) => [ticket, ...cur.filter((t) => t.id !== ticket.id)]);
     },
     updateTicket: (id, patch) => {
       setTickets((cur) => cur.map((t) => (t.id === id ? { ...t, ...patch } : t)));
       if (user) {
         const next = tickets.find((t) => t.id === id);
-        if (next) void db.from("service_tickets").upsert(ticketToDb(user.id, { ...next, ...patch }));
+        if (next) void db.from("service_tickets").update(ticketToDb(user.id, { ...next, ...patch })).eq("user_id", user.id).eq("ticket_code", id);
       }
     },
     removeTicket: (id) => {
       setTickets((cur) => cur.filter((t) => t.id !== id));
-      if (user) void db.from("service_tickets").delete().eq("user_id", user.id).eq("id", id);
+      if (user) void db.from("service_tickets").delete().eq("user_id", user.id).eq("ticket_code", id);
     },
     thresholds,
     averageTicketInr,
