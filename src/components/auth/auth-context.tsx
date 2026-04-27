@@ -27,7 +27,7 @@ async function ensureUserRecords(user: User) {
   );
   await db.from("user_roles").upsert(
     { user_id: user.id, role: "operator" },
-    { onConflict: "user_id,role" },
+    { onConflict: "user_id,role", ignoreDuplicates: true },
   );
   await db.from("fleet_settings").upsert({ user_id: user.id }, { onConflict: "user_id" });
 }
