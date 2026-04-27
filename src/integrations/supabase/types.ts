@@ -16,6 +16,7 @@ export type Database = {
     Tables: {
       fleet_settings: {
         Row: {
+          active_dataset_name: string | null
           average_ticket_inr: number
           created_at: string
           critical_shutdown_limit: number
@@ -25,6 +26,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          active_dataset_name?: string | null
           average_ticket_inr?: number
           created_at?: string
           critical_shutdown_limit?: number
@@ -34,6 +36,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          active_dataset_name?: string | null
           average_ticket_inr?: number
           created_at?: string
           critical_shutdown_limit?: number
@@ -245,6 +248,7 @@ export type Database = {
           owner: string | null
           priority: string
           status: string
+          ticket_code: string
           title: string
           unit_id: string | null
           updated_at: string
@@ -258,6 +262,7 @@ export type Database = {
           owner?: string | null
           priority?: string
           status?: string
+          ticket_code: string
           title: string
           unit_id?: string | null
           updated_at?: string
@@ -271,6 +276,7 @@ export type Database = {
           owner?: string | null
           priority?: string
           status?: string
+          ticket_code?: string
           title?: string
           unit_id?: string | null
           updated_at?: string
