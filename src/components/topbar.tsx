@@ -19,7 +19,7 @@ import { toast } from "sonner";
 
 export function TopBar({ crumb }: { crumb: string }) {
   const [uploadOpen, setUploadOpen] = useState(false);
-  const { source, units } = useFleetData();
+  const { source, units, clearLocalState } = useFleetData();
   const { user, profile, logout } = useAuth();
   const navigate = useNavigate();
 
@@ -27,10 +27,11 @@ export function TopBar({ crumb }: { crumb: string }) {
   const roleLabel = profile?.roles?.[0] ?? "operator";
   const initials = displayName.slice(0, 2).toUpperCase();
 
-  const handleLogout = () => {
-    void logout();
+  const handleLogout = async () => {
+    await logout();
+    clearLocalState();
     toast.success("Signed out");
-    void navigate({ to: "/login", replace: true });
+    await navigate({ to: "/login", replace: true });
   };
 
   return (
