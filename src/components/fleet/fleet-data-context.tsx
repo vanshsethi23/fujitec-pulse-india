@@ -42,14 +42,14 @@ interface FleetDataValue {
   units: ScoredUnit[];
   source: "mock" | "csv";
   fileName: string | null;
-  setUnits: (units: ScoredUnit[], fileName: string, rawRows: CsvRow[]) => void;
+  setUnits: (units: ScoredUnit[], fileName: string, rawRows: CsvRow[]) => Promise<void>;
   reset: () => void;
   clearLocalState: () => void;
   getTimeseries: (unitId: string) => TelemetryPoint[];
   selectedUnitId: string | null;
   setSelectedUnitId: (id: string | null) => void;
   tickets: ServiceTicket[];
-  addTicket: (ticket: ServiceTicket) => void;
+  addTicket: (ticket: ServiceTicket) => Promise<void>;
   updateTicket: (id: string, patch: Partial<ServiceTicket>) => void;
   removeTicket: (id: string) => void;
   thresholds: ThresholdOverrides;
@@ -104,6 +104,7 @@ const STORAGE_KEY = "fujitec-pulse:fleet-v2";
 const THEME_KEY = "fujitec-pulse:theme-v1";
 const DEFAULT_AVERAGE_TICKET_INR = 1_450_000;
 const DEFAULT_THRESHOLDS: ThresholdOverrides = { ropeWarningBelow: 96, ropeCriticalBelow: 94 };
+const DB_BATCH_SIZE = 500;
 
 function loadTheme(): "dark" | "light" {
   if (typeof window === "undefined") return "dark";
@@ -178,10 +179,45 @@ function rowToTelemetryDb(userId: string, row: CsvRow) {
   };
 }
 
+async function expectOk<T extends { error?: { message: string } | null }>(promise: PromiseLike<T>, label: string): Promise<T> {
+  const result = await promise;
+  if (result.error) throw new Error(`${label}: ${result.error.message}`);
+  return result;
+}
+
+async function insertInBatches(table: "fleet_units" | "fleet_telemetry_rows", records: any[], label: string) {
+  for (let i = 0; i < records.length; i += DB_BATCH_SIZE) {
+    await expectOk(db.from(table).insert(records.slice(i, i + DB_BATCH_SIZE)), label);
+  }
+}
+
+async function persistFleetDataset(userId: string, next: ScoredUnit[], name: string, rows: CsvRow[]) {
+  const telemetry = rows.filter((r) => String(r.Elevator_ID ?? "").trim()).map((r) => rowToTelemetryDb(userId, r));
+  await Promise.all([
+    expectOk(db.from("fleet_units").delete().eq("user_id", userId), "Clear saved units"),
+    expectOk(db.from("fleet_telemetry_rows").delete().eq("user_id", userId), "Clear saved telemetry"),
+  ]);
+  await insertInBatches("fleet_units", next.map((u) => unitToDb(userId, u)), "Save fleet units");
+  await insertInBatches("fleet_telemetry_rows", telemetry, "Save telemetry rows");
+  await expectOk(
+    db.from("fleet_settings").upsert({ user_id: userId, active_dataset_name: name }, { onConflict: "user_id" }),
+    "Save active dataset name",
+  );
+}
+
+function parseTicketPayload(description: string | null) {
+  if (!description) return {};
+  try {
+    return JSON.parse(description);
+  } catch {
+    return { notes: description };
+  }
+}
+
 function dbToTicket(row: any): ServiceTicket {
-  const payload = row.description ? JSON.parse(row.description) : {};
+  const payload = parseTicketPayload(row.description);
   return {
-    id: row.id,
+    id: row.ticket_code ?? row.id,
     unitId: row.unit_id ?? payload.unitId ?? "",
     site: payload.site ?? "Imported Site",
     city: payload.city ?? "—",
@@ -197,8 +233,8 @@ function dbToTicket(row: any): ServiceTicket {
 
 function ticketToDb(userId: string, ticket: ServiceTicket) {
   return {
-    id: ticket.id,
     user_id: userId,
+    ticket_code: ticket.id,
     unit_id: ticket.unitId,
     title: ticket.summary,
     priority: ticket.priority,
