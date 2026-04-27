@@ -362,6 +362,7 @@ export function FleetDataProvider({ children }: { children: ReactNode }) {
         db.from("fleet_units").delete().eq("user_id", user.id),
         db.from("fleet_telemetry_rows").delete().eq("user_id", user.id),
         db.from("service_tickets").delete().eq("user_id", user.id),
+        db.from("fleet_settings").upsert({ user_id: user.id, active_dataset_name: null }, { onConflict: "user_id" }),
       ]);
       try { if (typeof window !== "undefined") window.localStorage.removeItem(STORAGE_KEY); } catch { /* ignore */ }
     },
@@ -376,12 +377,12 @@ export function FleetDataProvider({ children }: { children: ReactNode }) {
       setTickets((cur) => cur.map((t) => (t.id === id ? { ...t, ...patch } : t)));
       if (user) {
         const next = tickets.find((t) => t.id === id);
-        if (next) void db.from("service_tickets").upsert(ticketToDb(user.id, { ...next, ...patch }));
+        if (next) void db.from("service_tickets").update(ticketToDb(user.id, { ...next, ...patch })).eq("user_id", user.id).eq("ticket_code", id);
       }
     },
     removeTicket: (id) => {
       setTickets((cur) => cur.filter((t) => t.id !== id));
-      if (user) void db.from("service_tickets").delete().eq("user_id", user.id).eq("id", id);
+      if (user) void db.from("service_tickets").delete().eq("user_id", user.id).eq("ticket_code", id);
     },
     thresholds,
     averageTicketInr,
