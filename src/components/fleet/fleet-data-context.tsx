@@ -82,10 +82,10 @@ function synthesizeSeries(unit: ScoredUnit): TelemetryPoint[] {
   };
   const now = Date.now();
   const points: TelemetryPoint[] = [];
-  for (let i = 47; i >= 0; i--) {
+  for (let i = 719; i >= 0; i--) {
     const t = now - i * 60 * 60 * 1000;
     const drift = (rand() - 0.5) * 0.15;
-    const wave = Math.sin((47 - i) / 4) * 0.08;
+    const wave = Math.sin((719 - i) / 24) * 0.08;
     points.push({
       t,
       label: fmtTs(t),
@@ -232,12 +232,23 @@ export function FleetDataProvider({ children }: { children: ReactNode }) {
     let alive = true;
     setCloudReady(false);
     void (async () => {
-      const [{ data: settings }, { data: unitRows }, { data: ticketRows }, { data: telemetryRows }] = await Promise.all([
+      const [{ data: settings }, { data: unitRows }, { data: ticketRows }] = await Promise.all([
         db.from("fleet_settings").select("rope_replacement_trigger, critical_shutdown_limit, average_ticket_inr").eq("user_id", user.id).maybeSingle(),
         db.from("fleet_units").select("*").eq("user_id", user.id).order("unit_id", { ascending: true }),
         db.from("service_tickets").select("*").eq("user_id", user.id).order("created_at", { ascending: false }),
-        db.from("fleet_telemetry_rows").select("source_row").eq("user_id", user.id).order("recorded_at", { ascending: true }).limit(50000),
       ]);
+      const telemetryRows: any[] = [];
+      for (let from = 0; ; from += 1000) {
+        const { data } = await db
+          .from("fleet_telemetry_rows")
+          .select("source_row")
+          .eq("user_id", user.id)
+          .order("recorded_at", { ascending: true })
+          .range(from, from + 999);
+        if (!Array.isArray(data) || data.length === 0) break;
+        telemetryRows.push(...data);
+        if (data.length < 1000) break;
+      }
       if (!alive) return;
       const nextThresholds = {
         ropeWarningBelow: Number(settings?.rope_replacement_trigger ?? DEFAULT_THRESHOLDS.ropeWarningBelow),
