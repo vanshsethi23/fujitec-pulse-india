@@ -283,9 +283,9 @@ export function FleetDataProvider({ children }: { children: ReactNode }) {
     setCloudReady(false);
     void (async () => {
       const [{ data: settings }, { data: unitRows }, { data: ticketRows }] = await Promise.all([
-        db.from("fleet_settings").select("rope_replacement_trigger, critical_shutdown_limit, average_ticket_inr").eq("user_id", user.id).maybeSingle(),
+        db.from("fleet_settings").select("rope_replacement_trigger, critical_shutdown_limit, average_ticket_inr, active_dataset_name").eq("user_id", user.id).maybeSingle(),
         db.from("fleet_units").select("*").eq("user_id", user.id).order("unit_id", { ascending: true }),
-        db.from("service_tickets").select("*").eq("user_id", user.id).order("created_at", { ascending: false }),
+        db.from("service_tickets").select("*, ticket_code").eq("user_id", user.id).order("created_at", { ascending: false }),
       ]);
       const telemetryRows: any[] = [];
       for (let from = 0; ; from += 1000) {
@@ -312,7 +312,7 @@ export function FleetDataProvider({ children }: { children: ReactNode }) {
       if (Array.isArray(unitRows) && unitRows.length) {
         setUnitsState(unitRows.map(dbToUnit));
         setSource("csv");
-        setFileName("Cloud Database");
+        setFileName(settings?.active_dataset_name ?? "Cloud Database");
       } else {
         const legacy = readLegacyFleet();
         if (legacy) {
@@ -320,8 +320,7 @@ export function FleetDataProvider({ children }: { children: ReactNode }) {
           setRawRows(legacy.rawRows);
           setFileName(legacy.fileName);
           setSource("csv");
-          await db.from("fleet_units").upsert(legacy.units.map((u) => unitToDb(user.id, u)), { onConflict: "user_id,unit_id" });
-          if (legacy.rawRows.length) await db.from("fleet_telemetry_rows").insert(legacy.rawRows.filter((r) => r.Elevator_ID).map((r) => rowToTelemetryDb(user.id, r)));
+          await persistFleetDataset(user.id, legacy.units, legacy.fileName ?? "Imported CSV", legacy.rawRows);
           window.localStorage.removeItem(STORAGE_KEY);
         } else {
           setUnitsState(initial);
