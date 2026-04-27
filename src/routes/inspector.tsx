@@ -87,6 +87,31 @@ const THRESH = {
   levelingMm: 10,
 } as const;
 
+const EXPECTED_PULSE_SAMPLES = 720;
+
+function formatAxisDate(value: number | string): string {
+  const date = new Date(Number(value));
+  if (Number.isNaN(date.getTime())) return "";
+  return date.toLocaleDateString("en-IN", { day: "2-digit", month: "short" });
+}
+
+function buildDateTicks(series: TelemetryPoint[]): number[] {
+  if (!series.length) return [];
+  const ticks: number[] = [];
+  const seenDays = new Set<string>();
+  for (const point of series) {
+    const date = new Date(point.t);
+    if (Number.isNaN(date.getTime())) continue;
+    const dayKey = date.toISOString().slice(0, 10);
+    if (seenDays.has(dayKey)) continue;
+    seenDays.add(dayKey);
+    if (date.getDate() % 5 === 0 || ticks.length === 0) ticks.push(point.t);
+  }
+  const last = series[series.length - 1]?.t;
+  if (Number.isFinite(last) && ticks[ticks.length - 1] !== last) ticks.push(last);
+  return ticks;
+}
+
 const STATUS_META: Record<UnitStatus, { label: string; cls: string; dot: string }> = {
   healthy: {
     label: "Normal",
@@ -128,12 +153,9 @@ function InspectorBody() {
     [unit, getTimeseries],
   );
 
-  // Last 30 days only
   const series = useMemo(() => {
     if (!fullSeries.length) return [];
-    const cutoff = Date.now() - 30 * 24 * 60 * 60 * 1000;
-    const trimmed = fullSeries.filter((s) => s.t >= cutoff);
-    return trimmed.length ? trimmed : fullSeries;
+    return fullSeries.slice(-EXPECTED_PULSE_SAMPLES);
   }, [fullSeries]);
 
   return (
@@ -434,6 +456,7 @@ function HealthGauge({ score, status }: { score: number; status: UnitStatus }) {
 
 function PulseGrid({ series }: { series: TelemetryPoint[] }) {
   const empty = series.length === 0;
+  const dateTicks = useMemo(() => buildDateTicks(series), [series]);
   return (
     <section>
       <div className="mb-3 flex items-end justify-between">
@@ -477,11 +500,15 @@ function PulseGrid({ series }: { series: TelemetryPoint[] }) {
                 </defs>
                 <CartesianGrid stroke="var(--border)" strokeDasharray="3 3" vertical={false} />
                 <XAxis
-                  dataKey="label"
+                  dataKey="t"
+                  type="number"
+                  scale="time"
+                  domain={["dataMin", "dataMax"]}
+                  ticks={dateTicks}
+                  tickFormatter={formatAxisDate}
                   tick={{ fill: "var(--muted-foreground)", fontSize: 10 }}
                   tickLine={false}
                   axisLine={{ stroke: "var(--border)" }}
-                  minTickGap={32}
                 />
                 <YAxis
                   tick={{ fill: "var(--muted-foreground)", fontSize: 10 }}
@@ -531,11 +558,15 @@ function PulseGrid({ series }: { series: TelemetryPoint[] }) {
               >
                 <CartesianGrid stroke="var(--border)" strokeDasharray="3 3" vertical={false} />
                 <XAxis
-                  dataKey="label"
+                  dataKey="t"
+                  type="number"
+                  scale="time"
+                  domain={["dataMin", "dataMax"]}
+                  ticks={dateTicks}
+                  tickFormatter={formatAxisDate}
                   tick={{ fill: "var(--muted-foreground)", fontSize: 10 }}
                   tickLine={false}
                   axisLine={{ stroke: "var(--border)" }}
-                  minTickGap={32}
                 />
                 <YAxis
                   tick={{ fill: "var(--muted-foreground)", fontSize: 10 }}
@@ -586,11 +617,15 @@ function PulseGrid({ series }: { series: TelemetryPoint[] }) {
               >
                 <CartesianGrid stroke="var(--border)" strokeDasharray="3 3" vertical={false} />
                 <XAxis
-                  dataKey="label"
+                  dataKey="t"
+                  type="number"
+                  scale="time"
+                  domain={["dataMin", "dataMax"]}
+                  ticks={dateTicks}
+                  tickFormatter={formatAxisDate}
                   tick={{ fill: "var(--muted-foreground)", fontSize: 10 }}
                   tickLine={false}
                   axisLine={{ stroke: "var(--border)" }}
-                  minTickGap={32}
                 />
                 <YAxis
                   tick={{ fill: "var(--muted-foreground)", fontSize: 10 }}
@@ -641,11 +676,15 @@ function PulseGrid({ series }: { series: TelemetryPoint[] }) {
               >
                 <CartesianGrid stroke="var(--border)" strokeDasharray="3 3" vertical={false} />
                 <XAxis
-                  dataKey="label"
+                  dataKey="t"
+                  type="number"
+                  scale="time"
+                  domain={["dataMin", "dataMax"]}
+                  ticks={dateTicks}
+                  tickFormatter={formatAxisDate}
                   tick={{ fill: "var(--muted-foreground)", fontSize: 10 }}
                   tickLine={false}
                   axisLine={{ stroke: "var(--border)" }}
-                  minTickGap={32}
                 />
                 <YAxis
                   tick={{ fill: "var(--muted-foreground)", fontSize: 10 }}
@@ -743,7 +782,6 @@ interface SyncedPayloadEntry {
 
 function SyncedTooltip({
   active,
-  label,
   payload,
 }: {
   active?: boolean;
@@ -756,7 +794,7 @@ function SyncedTooltip({
   return (
     <div className="rounded-md border border-border bg-card/95 p-2 shadow-lg backdrop-blur-sm">
       <div className="mb-1 text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
-        {label}
+        {p.label}
       </div>
       <div className="grid grid-cols-2 gap-x-3 gap-y-0.5 font-mono text-[10px]">
         <span className="text-muted-foreground">Motor</span>
