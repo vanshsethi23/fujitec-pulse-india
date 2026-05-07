@@ -388,10 +388,21 @@ export function FleetDataProvider({ children }: { children: ReactNode }) {
       setTickets((cur) => [ticket, ...cur.filter((t) => t.id !== ticket.id)]);
     },
     updateTicket: (id, patch) => {
-      setTickets((cur) => cur.map((t) => (t.id === id ? { ...t, ...patch } : t)));
-      if (user) {
-        const next = tickets.find((t) => t.id === id);
-        if (next) void db.from("service_tickets").update(ticketToDb(user.id, { ...next, ...patch })).eq("user_id", user.id).eq("ticket_code", id);
+      let updated: ServiceTicket | undefined;
+      setTickets((cur) => cur.map((t) => {
+        if (t.id !== id) return t;
+        updated = { ...t, ...patch };
+        return updated;
+      }));
+      if (user && updated) {
+        void db
+          .from("service_tickets")
+          .update(ticketToDb(user.id, updated))
+          .eq("user_id", user.id)
+          .eq("ticket_code", id)
+          .then(({ error }: { error: { message: string } | null }) => {
+            if (error) console.error("Failed to persist ticket update:", error.message);
+          });
       }
     },
     removeTicket: (id) => {
