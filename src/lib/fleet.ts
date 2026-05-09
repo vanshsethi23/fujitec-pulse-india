@@ -302,25 +302,32 @@ const num = (v: unknown, fallback = 0): number => {
  * Install_Year is taken from the first non-empty value seen.
  */
 export function csvRowsToUnits(rows: CsvRow[]): ScoredUnit[] {
-  const byId = new Map<string, { latest: CsvRow; ts: number; install: number }>();
+  const byId = new Map<string, { latest: CsvRow; ts: number; install: number; location: string }>();
   for (const row of rows) {
     const id = String(row.Elevator_ID ?? "").trim();
     if (!id) continue;
     const ts = Date.parse(row.Timestamp ?? "") || 0;
     const install = num(row.Install_Year, 0);
+    const location = String((row as any).Location ?? "").trim();
     const cur = byId.get(id);
     if (!cur || ts >= cur.ts) {
-      byId.set(id, { latest: row, ts, install: install || cur?.install || 0 });
-    } else if (!cur.install && install) {
-      cur.install = install;
+      byId.set(id, {
+        latest: row,
+        ts,
+        install: install || cur?.install || 0,
+        location: location || cur?.location || "",
+      });
+    } else {
+      if (!cur.install && install) cur.install = install;
+      if (!cur.location && location) cur.location = location;
     }
   }
 
   const units: ScoredUnit[] = [];
-  for (const [id, { latest, install }] of byId) {
+  for (const [id, { latest, install, location }] of byId) {
     const unit: ElevatorUnit = {
       Unit_ID: id,
-      Site: "Imported Site",
+      Site: location || "Imported Site",
       City: "—",
       Install_Year: install || NOW_YEAR - 5,
       Motor_Temp_C: num(latest.Motor_Temp_C),
