@@ -353,7 +353,7 @@ export async function csvRowsToUnitsAsync(
   chunkSize = 2000,
 ): Promise<ScoredUnit[]> {
   const yieldToUi = () => new Promise<void>((r) => setTimeout(r, 0));
-  const byId = new Map<string, { latest: CsvRow; ts: number; install: number }>();
+  const byId = new Map<string, { latest: CsvRow; ts: number; install: number; location: string }>();
 
   for (let i = 0; i < rows.length; i += chunkSize) {
     const end = Math.min(i + chunkSize, rows.length);
@@ -363,11 +363,18 @@ export async function csvRowsToUnitsAsync(
       if (!id) continue;
       const ts = Date.parse(row.Timestamp ?? "") || 0;
       const install = num(row.Install_Year, 0);
+      const location = String((row as any).Location ?? "").trim();
       const cur = byId.get(id);
       if (!cur || ts >= cur.ts) {
-        byId.set(id, { latest: row, ts, install: install || cur?.install || 0 });
-      } else if (!cur.install && install) {
-        cur.install = install;
+        byId.set(id, {
+          latest: row,
+          ts,
+          install: install || cur?.install || 0,
+          location: location || cur?.location || "",
+        });
+      } else {
+        if (!cur.install && install) cur.install = install;
+        if (!cur.location && location) cur.location = location;
       }
     }
     onProgress?.(Math.round((end / rows.length) * 70), "aggregating");
@@ -379,10 +386,10 @@ export async function csvRowsToUnitsAsync(
   for (let i = 0; i < entries.length; i += chunkSize) {
     const end = Math.min(i + chunkSize, entries.length);
     for (let j = i; j < end; j++) {
-      const [id, { latest, install }] = entries[j];
+      const [id, { latest, install, location }] = entries[j];
       const unit: ElevatorUnit = {
         Unit_ID: id,
-        Site: "Imported Site",
+        Site: location || "Imported Site",
         City: "—",
         Install_Year: install || NOW_YEAR - 5,
         Motor_Temp_C: num(latest.Motor_Temp_C),
