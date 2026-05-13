@@ -50,11 +50,14 @@ export interface ThresholdOverrides {
   ropeCriticalBelow: number;
 }
 
-/** Mutate the global rope thresholds. Subsequent scoreUnit/statusForUnit
- *  calls will reflect the new values. */
+/** Mutate the global rope thresholds. Subsequent scoreUnit/statusForUnit/
+ *  isModernizationLead calls will reflect the new values. The lead-rope
+ *  trigger is kept in sync with the warning band so the pipeline rescore
+ *  is visible across KPIs (leads, revenue, status). */
 export function setThresholdOverrides(o: ThresholdOverrides): void {
   THRESHOLDS.rope.warningBelow = o.ropeWarningBelow;
   THRESHOLDS.rope.criticalBelow = o.ropeCriticalBelow;
+  LEAD_RULES.ropeBelow = o.ropeWarningBelow;
 }
 
 // Pinned per business rule: age is computed against 2026.
@@ -102,7 +105,7 @@ export function statusForScore(score: number): UnitStatus {
 export const LEAD_RULES = {
   installBefore: 2006,
   ropeBelow: 96.0,
-} as const;
+};
 
 export function isModernizationLead(u: ElevatorUnit): boolean {
   return u.Install_Year < LEAD_RULES.installBefore || u.Main_Rope_Condition < LEAD_RULES.ropeBelow;

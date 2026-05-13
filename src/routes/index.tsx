@@ -51,7 +51,7 @@ function FleetOverview() {
 }
 
 function FleetOverviewBody() {
-  const { units, source, fileName, averageTicketInr } = useFleetData();
+  const { units, source, fileName, averageTicketInr, thresholds } = useFleetData();
   const summary = useMemo(() => summarize(units, averageTicketInr), [units, averageTicketInr]);
 
   const lastSync = useMemo(() => {
@@ -120,7 +120,7 @@ function FleetOverviewBody() {
         <KpiCard
           label="Modernization Leads"
           value={summary.leads.toString()}
-          sublabel="Pre-2006 install or Main Rope Condition < 96%"
+          sublabel={`Pre-2006 install or Main Rope Condition < ${thresholds.ropeWarningBelow}%`}
           delta={6.8}
           spark={spark(53, summary.leads, 3)}
           accent="warning"
