@@ -105,7 +105,7 @@ export function statusForScore(score: number): UnitStatus {
 export const LEAD_RULES = {
   installBefore: 2006,
   ropeBelow: 96.0,
-} as const;
+};
 
 export function isModernizationLead(u: ElevatorUnit): boolean {
   return u.Install_Year < LEAD_RULES.installBefore || u.Main_Rope_Condition < LEAD_RULES.ropeBelow;
